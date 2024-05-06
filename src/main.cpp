@@ -2,15 +2,15 @@
 #include <iostream>
 
 #include "utils.h"
-#include "8080/state.h"
+#include "8080/state8080.h"
 
 int main(int argc, char *argv[])
 {
-    State state{};
+    State8080 state{};
 
     for (;;)
     {
-        uint8_t op = state.get_mem(state.pc);
+        uint8_t op = state.memory[state.pc];
 
         std::cout << state << '\n';
         std::cout << Utils::to_hex_string(state.pc) << " " << Utils::to_hex_string(op) << " ";
@@ -25,7 +25,7 @@ int main(int argc, char *argv[])
         break;
         case 0x06: // MVI B
         {
-            uint8_t b = state.get_mem(state.pc + 1);
+            uint8_t b = state.memory[state.pc + 1];
             std::cout << "MVI B, " << Utils::to_hex_string(b);
 
             state.b = b;
@@ -35,7 +35,7 @@ int main(int argc, char *argv[])
         break;
         case 0x11: // LXI D
         {
-            uint16_t de = Utils::to_addressLH(state.get_mem(state.pc + 1), state.get_mem(state.pc + 2));
+            uint16_t de = Utils::to_addressLH(state.memory[state.pc + 1], state.memory[state.pc + 2]);
             std::cout << "LXI DE, " << Utils::to_hex_string(de);
 
             state.d = (de >> 8) & 0xFF;
@@ -49,7 +49,7 @@ int main(int argc, char *argv[])
             std::cout << "LDAX D";
 
             uint16_t de = Utils::to_addressLH(state.e, state.d);
-            uint8_t de_mem = state.get_mem(de);
+            uint8_t de_mem = state.memory[de];
 
             state.a = de_mem;
 
@@ -58,7 +58,7 @@ int main(int argc, char *argv[])
         break;
         case 0x21: // LXI H
         {
-            uint16_t hl = Utils::to_addressLH(state.get_mem(state.pc + 1), state.get_mem(state.pc + 2));
+            uint16_t hl = Utils::to_addressLH(state.memory[state.pc + 1], state.memory[state.pc + 2]);
             std::cout << "LXI HL, " << Utils::to_hex_string(hl);
 
             state.h = (hl >> 8) & 0xFF;
@@ -83,7 +83,7 @@ int main(int argc, char *argv[])
         break;
         case 0x31: // LXI SP
         {
-            uint16_t sp = Utils::to_addressLH(state.get_mem(state.pc + 1), state.get_mem(state.pc + 2));
+            uint16_t sp = Utils::to_addressLH(state.memory[state.pc + 1], state.memory[state.pc + 2]);
             std::cout << "LXI SP, " << Utils::to_hex_string(sp);
 
             state.sp = sp;
@@ -92,7 +92,7 @@ int main(int argc, char *argv[])
         break;
         case 0xC3: // JMP
         {
-            uint16_t jmpAddr = Utils::to_addressLH(state.get_mem(state.pc + 1), state.get_mem(state.pc + 2));
+            uint16_t jmpAddr = Utils::to_addressLH(state.memory[state.pc + 1], state.memory[state.pc + 2]);
 
             std::cout << "JMP " << Utils::to_hex_string(jmpAddr);
 
@@ -101,13 +101,13 @@ int main(int argc, char *argv[])
         break;
         case 0xCD: // CALL
         {
-            uint16_t callAddr = Utils::to_addressLH(state.get_mem(state.pc + 1), state.get_mem(state.pc + 2));
+            uint16_t callAddr = Utils::to_addressLH(state.memory[state.pc + 1], state.memory[state.pc + 2]);
             std::cout << "CALL " << Utils::to_hex_string(callAddr);
 
             uint16_t retAddr = state.pc + 2;
 
-            state.set_mem(state.sp - 1, (retAddr >> 8) & 0xff);
-            state.set_mem(state.sp - 2, retAddr & 0xff);
+            state.memory[state.sp - 1] = (retAddr >> 8) & 0xff;
+            state.memory[state.sp - 2] = retAddr & 0xff;
 
             state.sp = state.sp - 2;
 

@@ -3,10 +3,11 @@
 #include <cstdint>
 #include <ostream>
 
-struct State
+#include "mem8080.h"
+
+struct State8080
 {
 public:
-    State();
 
     uint8_t a{0};
     uint8_t b{0};
@@ -19,9 +20,7 @@ public:
     uint16_t sp{0};
     uint16_t pc{0};
 
-    void set_mem(uint16_t addr, uint8_t value);
-
-    uint8_t get_mem(uint16_t addr) const;
+    Mem8080 memory{};
 
     struct Flags
     {
@@ -31,9 +30,5 @@ public:
         bool c;
     } flags;
 
-    friend std::ostream &operator<<(std::ostream &stream, const State &state);
-
-private:
-    // 2^16 = 65536
-    uint8_t *memory = new uint8_t[16 * 0x1000];
+    friend std::ostream &operator<<(std::ostream &stream, const State8080 &state);
 };

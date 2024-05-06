@@ -11,8 +11,10 @@ add_executable(SpaceInvaders
     src/reader.h
     src/utils.h
     src/utils.cpp
-    src/8080/state.h
-    src/8080/state.cpp)
+    src/8080/state8080.h
+    src/8080/state8080.cpp
+    src/8080/mem8080.h
+    src/8080/mem8080.cpp)
 
 set(INVADERS_RES
     ${CMAKE_SOURCE_DIR}/res/invaders.h

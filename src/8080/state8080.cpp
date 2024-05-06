@@ -2,17 +2,9 @@
 #include "../utils.h"
 
 #include "../reader.h"
-#include "state.h"
+#include "state8080.h"
 
-State::State() 
-{
-    copy_at("invaders.h", memory + 0x0000);
-    copy_at("invaders.g", memory + 0x0800);
-    copy_at("invaders.f", memory + 0x1000);
-    copy_at("invaders.e", memory + 0x1800);
-}
-
-std::ostream &operator<<(std::ostream &stream, const State &state)
+std::ostream &operator<<(std::ostream &stream, const State8080 &state)
 {
     stream << 
         "A=" << Utils::to_hex_string(state.a) << 
@@ -29,15 +21,4 @@ std::ostream &operator<<(std::ostream &stream, const State &state)
         " C" << static_cast<int>(state.flags.c);
     
     return stream; 
-}
-
-void State::set_mem(uint16_t addr, uint8_t value)
-{
-    memory[addr] = value;
-    
-}
-
-uint8_t State::get_mem(uint16_t addr) const 
-{
-    return memory[addr];
 }

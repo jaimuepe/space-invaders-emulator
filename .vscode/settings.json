@@ -55,5 +55,6 @@
         "format": "cpp",
         "span": "cpp",
         "variant": "cpp"
-    }
+    },
+    "cmake.configureOnOpen": true
 }
