@@ -63,6 +63,8 @@ int main(int argc, char *argv[])
     State8080 state{};
     state.init();
 
+    uint16_t cycles{0};
+
     for (;;)
     {
         uint8_t op = state.memory[state.pc];
@@ -146,13 +148,31 @@ int main(int argc, char *argv[])
             LXI(state, &state.sp);
         }
         break;
+        case 0xC2: // JNZ
+        {
+            std::cout << "JNZ " << PC2_str(state);
+
+            if (!state.flags.z)
+            {
+                uint16_t jmpAddr = Utils::to_addressLH(
+                    state.memory[state.pc + 1],
+                    state.memory[state.pc + 2]);
+
+                state.pc = jmpAddr;
+            }
+            else
+            {
+                state.pc += 3;
+            }
+        }
+        break;
         case 0xC3: // JMP
         {
+            std::cout << "JMP " << PC2_str(state);
+
             uint16_t jmpAddr = Utils::to_addressLH(
                 state.memory[state.pc + 1],
                 state.memory[state.pc + 2]);
-
-            std::cout << "JMP " << PC2_str(state);
 
             state.pc = jmpAddr;
         }
@@ -170,20 +190,32 @@ int main(int argc, char *argv[])
             state.pc++;
         }
         break;
+        case 0xC9: // RET
+        {
+            std::cout << "RET";
+
+            uint16_t retAddr = Utils::to_addressLH(
+                state.memory[state.sp],
+                state.memory[state.sp + 1]);
+
+            state.pc = retAddr;
+            state.sp += 2;
+        }
+        break;
         case 0xCD: // CALL
         {
+            std::cout << "CALL " << PC2_str(state);
+
             uint16_t callAddr = Utils::to_addressLH(
                 state.memory[state.pc + 1],
                 state.memory[state.pc + 2]);
 
-            std::cout << "CALL " << Utils::to_hex_string(callAddr);
-
-            uint16_t retAddr = state.pc + 2;
+            uint16_t retAddr = state.pc + 3;
 
             state.memory[state.sp - 1] = (retAddr >> 8) & 0xff;
             state.memory[state.sp - 2] = retAddr & 0xff;
 
-            state.sp = state.sp - 2;
+            state.sp -= 2;
 
             state.pc = callAddr;
         }

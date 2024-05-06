@@ -19,7 +19,7 @@ std::ostream &operator<<(std::ostream &stream, const State8080 &state)
         " E=" << Utils::to_hex_string(state.e) << 
         " H=" << Utils::to_hex_string(state.h) << 
         " L=" << Utils::to_hex_string(state.l) << 
-        " SP= " << Utils::to_hex_string(state.sp) <<
+        " SP=" << Utils::to_hex_string(state.sp) <<
         " S" << static_cast<int>(state.flags.s) << 
         " Z" << static_cast<int>(state.flags.z) << 
         " P" << static_cast<int>(state.flags.p) <<
