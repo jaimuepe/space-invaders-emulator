@@ -2,7 +2,9 @@
 
 #include "../reader.h"
 
-void Mem8080::load()
+#include <iostream>
+
+void Mem8080::init()
 {
     Reader::copy_at("invaders.h", memory + 0x0000);
     Reader::copy_at("invaders.g", memory + 0x0800);
@@ -10,12 +12,12 @@ void Mem8080::load()
     Reader::copy_at("invaders.e", memory + 0x1800);
 }
 
-uint8_t &Mem8080::operator[](int idx)
+const uint8_t &Mem8080::operator[](uint16_t pos) const
 {
-    return memory[idx];
+    return memory[pos];
 }
 
-uint8_t Mem8080::operator[](int idx) const
+uint8_t &Mem8080::operator[](uint16_t pos)
 {
-    return memory[idx];
+    return memory[pos];
 }

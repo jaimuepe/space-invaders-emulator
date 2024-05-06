@@ -18,32 +18,18 @@ uint16_t Utils::to_addressLH(uint8_t lo, uint8_t hi)
     return lo | hi << 8;
 }
 
-bool Utils::parity(uint8_t input)
+bool Utils::parity(uint8_t x)
 {
-    uint8_t state = 0;
+    int size = 8;
 
-    state = state ^ (input & 1);
-
-    input = input >> 1;
-    state = state ^ (input & 1);
-
-    input = input >> 1;
-    state = state ^ (input & 1);
-
-    input = input >> 1;
-    state = state ^ (input & 1);
-
-    input = input >> 1;
-    state = state ^ (input & 1);
-
-    input = input >> 1;
-    state = state ^ (input & 1);
-
-    input = input >> 1;
-    state = state ^ (input & 1);
-
-    input = input >> 1;
-    state = state ^ (input & 1);
-
-    return state;
+    int i;
+    int p = 0;
+    x = (x & ((1 << size) - 1));
+    for (i = 0; i < size; i++)
+    {
+        if (x & 0x1)
+            p++;
+        x = x >> 1;
+    }
+    return (0 == (p & 0x1));
 }

@@ -9,6 +9,7 @@ enable_testing()
 add_executable(SpaceInvaders 
     src/main.cpp 
     src/reader.h
+    src/reader.cpp
     src/utils.h
     src/utils.cpp
     src/8080/state8080.h

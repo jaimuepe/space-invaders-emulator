@@ -4,6 +4,11 @@
 #include "../reader.h"
 #include "state8080.h"
 
+void State8080::init() 
+{
+    memory.init();    
+}
+
 std::ostream &operator<<(std::ostream &stream, const State8080 &state)
 {
     stream << 
