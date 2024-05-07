@@ -13,7 +13,7 @@ std::string Utils::to_hex_string(uint16_t input)
     return std::format("{:04X}", input);
 }
 
-uint16_t Utils::to_addressLH(uint8_t lo, uint8_t hi)
+uint16_t Utils::to_16(uint8_t lo, uint8_t hi)
 {
     return lo | hi << 8;
 }

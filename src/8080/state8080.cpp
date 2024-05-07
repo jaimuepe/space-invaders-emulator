@@ -23,7 +23,8 @@ std::ostream &operator<<(std::ostream &stream, const State8080 &state)
         " S" << static_cast<int>(state.flags.s) << 
         " Z" << static_cast<int>(state.flags.z) << 
         " P" << static_cast<int>(state.flags.p) <<
-        " C" << static_cast<int>(state.flags.c);
+        " C" << static_cast<int>(state.flags.c) << 
+        " Cycles=" << state.cycles;
     
     return stream; 
 }
