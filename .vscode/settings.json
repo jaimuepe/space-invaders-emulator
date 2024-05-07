@@ -54,7 +54,8 @@
         "charconv": "cpp",
         "format": "cpp",
         "span": "cpp",
-        "variant": "cpp"
+        "variant": "cpp",
+        "cstdarg": "cpp"
     },
     "cmake.configureOnOpen": true
 }

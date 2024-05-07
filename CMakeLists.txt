@@ -12,6 +12,10 @@ add_executable(SpaceInvaders
     src/reader.cpp
     src/utils.h
     src/utils.cpp
+    src/SpaceInvaders/space_invaders.h
+    src/SpaceInvaders/space_invaders.cpp
+    src/8080/emulator8080.h
+    src/8080/emulator8080.cpp
     src/8080/state8080.h
     src/8080/state8080.cpp
     src/8080/mem8080.h
