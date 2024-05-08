@@ -41,7 +41,10 @@ void SpaceInvaders::run()
             break;
         }
 
-        emulator.step();
+        for (int i = 0; i < 100; i++)
+        {
+            emulator.step();
+        }
         /*auto cpu_time = std::chrono::high_resolution_clock::now();
 
         elapsed_time += std::chrono::duration_cast<std::chrono::nanoseconds>(cpu_time - last_cpu_time).count();

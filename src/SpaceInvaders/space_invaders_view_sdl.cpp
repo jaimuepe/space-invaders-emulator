@@ -4,11 +4,8 @@
 
 #include <iostream>
 
-constexpr int NATIVE_WIDTH = 224;
-constexpr int NATIVE_HEIGHT = 256;
-
-constexpr int SCREEN_WIDTH = 256;
-constexpr int SCREEN_HEIGHT = 224;
+constexpr int SCREEN_WIDTH = 224;
+constexpr int SCREEN_HEIGHT = 256;
 
 SpaceInvadersViewSDL::SpaceInvadersViewSDL() {}
 
@@ -73,18 +70,22 @@ bool SpaceInvadersViewSDL::render(uint8_t *video_memory)
 
     uint8_t *pixels = (uint8_t *)surface->pixels;
 
-    // memcpy(surface->pixels, video_memory, SCREEN_HEIGHT * SCREEN_WIDTH / 8);
-
-    for (int i = 0; i < SCREEN_HEIGHT * SCREEN_WIDTH; i++)
+    // video buffer is rotated -90º
+    for (int i = 0; i < SCREEN_WIDTH; i++)
     {
-        int screenY = i / SCREEN_WIDTH;
-        int screenX = i % SCREEN_WIDTH;
+        for (int j = 0; j < SCREEN_HEIGHT; j++)
+        {
+            int idx = i * SCREEN_HEIGHT + j;
+            int p = idx % 8;
 
-        int p = i % 8;
-        uint8_t bit = (video_memory[i / 8] >> (7 - p)) & 0x01;
+            uint8_t bit = (video_memory[idx / 8] >> (7 - p)) & 0x01;
 
-        uint8_t *target_pixel = pixels + screenY * surface->pitch + screenX * surface->format->BytesPerPixel;
-        *target_pixel = bit;
+            int ii = j;
+            int jj = i + 1;
+
+            uint8_t *target_pixel = pixels + ii * surface->pitch + jj * surface->format->BytesPerPixel;
+            *target_pixel = bit;
+        }
     }
 
     SDL_RenderClear(renderer);
