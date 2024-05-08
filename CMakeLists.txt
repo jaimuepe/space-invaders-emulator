@@ -3,8 +3,7 @@ project(SpaceInvaders VERSION 0.1.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 
-include(CTest)
-enable_testing()
+add_subdirectory(vendored/sdl EXCLUDE_FROM_ALL)
 
 add_executable(SpaceInvaders 
     src/main.cpp 
@@ -14,6 +13,9 @@ add_executable(SpaceInvaders
     src/utils.cpp
     src/SpaceInvaders/space_invaders.h
     src/SpaceInvaders/space_invaders.cpp
+    src/SpaceInvaders/space_invaders_view.h
+    src/SpaceInvaders/space_invaders_view_sdl.h
+    src/SpaceInvaders/space_invaders_view_sdl.cpp
     src/8080/emulator8080.h
     src/8080/emulator8080.cpp
     src/8080/state8080.h
@@ -21,21 +23,19 @@ add_executable(SpaceInvaders
     src/8080/mem8080.h
     src/8080/mem8080.cpp)
 
-set(INVADERS_RES
-    ${CMAKE_SOURCE_DIR}/res/invaders.h
-    ${CMAKE_SOURCE_DIR}/res/invaders.g
-    ${CMAKE_SOURCE_DIR}/res/invaders.f
-    ${CMAKE_SOURCE_DIR}/res/invaders.e
-)
+target_link_libraries(SpaceInvaders PRIVATE SDL3::SDL3)
 
-foreach( file_i ${INVADERS_RES})
+if (WIN32)
     add_custom_command(
         TARGET SpaceInvaders POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy
-                ${file_i}
-                ${CMAKE_CURRENT_BINARY_DIR})
-endforeach( file_i )
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different 
+            "$<TARGET_FILE:SDL3::SDL3>" 
+            "$<TARGET_FILE_DIR:SpaceInvaders>"
+        VERBATIM)
+endif()
 
-set(CPACK_PROJECT_NAME ${PROJECT_NAME})
-set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})
-include(CPack)
+add_custom_command(
+    TARGET SpaceInvaders POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_SOURCE_DIR}/res/
+        $<TARGET_FILE_DIR:SpaceInvaders>/res)

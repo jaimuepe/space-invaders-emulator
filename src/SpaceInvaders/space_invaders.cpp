@@ -1,5 +1,13 @@
 #include "space_invaders.h"
 
+#include "space_invaders_view.h"
+#include "space_invaders_view_sdl.h"
+
+#include <chrono>
+#include <iostream>
+
+SpaceInvaders::SpaceInvaders() {}
+
 void SpaceInvaders::init()
 {
     emulator.init();
@@ -13,16 +21,45 @@ void SpaceInvaders::init()
             state.pc += 2;
         });
 
-    // add custom
+    view = std::make_unique<SpaceInvadersViewSDL>();
+    view->init();
 }
 
 void SpaceInvaders::run()
 {
+    // we need our clock to run at 2MHz, so our cycle time is 1 2_000_000 = 500ns
+    constexpr int cycle_ns = 500;
+
+    auto last_cpu_time = std::chrono::high_resolution_clock::now();
+
+    long long elapsed_time{0};
+
     for (;;)
     {
-        emulator.step();
+        if (!view->render()) break;
+        
+        /*auto cpu_time = std::chrono::high_resolution_clock::now();
+
+        elapsed_time += std::chrono::duration_cast<std::chrono::nanoseconds>(cpu_time - last_cpu_time).count();
+
+        if (elapsed_time > cycle_ns)
+        {
+            // tickkk
+            std::cout << "elapsed ns: " << elapsed_time << '\n';
+            while (elapsed_time > cycle_ns)
+            {
+                elapsed_time -= cycle_ns;
+            }
+        }
+
+        // emulator.step();
+
+        last_cpu_time = cpu_time;
+        */
     }
 }
+
+SpaceInvaders::~SpaceInvaders() {}
 
 void SpaceInvaders::handle_in_port(State8080 &state, uint8_t port, uint8_t value)
 {

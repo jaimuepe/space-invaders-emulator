@@ -2,12 +2,20 @@
 
 #include "../8080/emulator8080.h"
 
+#include <memory>
+
+class SpaceInvadersView;
+
 class SpaceInvaders
 {
 public:
+    SpaceInvaders();
+
     void init();
 
     void run();
+
+    ~SpaceInvaders();
 
 private:
     uint16_t shift_x{0};
@@ -18,6 +26,8 @@ private:
     uint8_t inputs[2];
 
     Emulator8080 emulator{};
+
+    std::unique_ptr<SpaceInvadersView> view;
 
     void handle_in_port(State8080 &state, uint8_t port, uint8_t value);
 
