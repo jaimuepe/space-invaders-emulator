@@ -1,8 +1,11 @@
 #include "space_invaders_view_sdl.h"
 
-#include "SDL3/SDL.h"
+#include "SDL2/SDL.h"
 
 #include <iostream>
+
+constexpr int NATIVE_WIDTH = 224;
+constexpr int NATIVE_HEIGHT = 256;
 
 constexpr int SCREEN_WIDTH = 256;
 constexpr int SCREEN_HEIGHT = 224;
@@ -18,10 +21,12 @@ void SpaceInvadersViewSDL::init()
     }
 
     window = SDL_CreateWindow(
-        "space_invaders",
-        SCREEN_WIDTH,
-        SCREEN_HEIGHT,
-        0);
+        "Space Invaders",
+        SDL_WINDOWPOS_UNDEFINED,
+        SDL_WINDOWPOS_UNDEFINED,
+        3 * SCREEN_WIDTH,
+        3 * SCREEN_HEIGHT,
+        SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
 
     if (window == nullptr)
     {
@@ -29,10 +34,28 @@ void SpaceInvadersViewSDL::init()
         exit(1);
     }
 
-    surface = SDL_GetWindowSurface(window);
+    renderer = SDL_CreateRenderer(window, -1, 0);
+
+    SDL_SetWindowMinimumSize(window, SCREEN_WIDTH, SCREEN_HEIGHT);
+
+    SDL_RenderSetLogicalSize(renderer, 3 * SCREEN_WIDTH, 3 * SCREEN_HEIGHT);
+
+    SDL_RenderSetIntegerScale(renderer, SDL_TRUE);
+
+    surface = SDL_CreateRGBSurfaceWithFormat(0,
+                                             SCREEN_WIDTH,
+                                             SCREEN_HEIGHT,
+                                             1,
+                                             SDL_PIXELFORMAT_INDEX8);
+
+    SDL_Color colors[2] = {{0, 0, 0, 255}, {255, 255, 255, 255}};
+    SDL_SetPaletteColors(surface->format->palette, colors, 0, 2);
 }
 
-bool SpaceInvadersViewSDL::render()
+#define RGB_ON 0xFFFFFFFFL
+#define RGB_OFF 0x00000000L
+
+bool SpaceInvadersViewSDL::render(uint8_t *video_memory)
 {
     SDL_Event eventData;
 
@@ -42,17 +65,40 @@ bool SpaceInvadersViewSDL::render()
     {
         switch (eventData.type)
         {
-        case SDL_EVENT_QUIT:
+        case SDL_QUIT:
             keepGoing = false;
             break;
         }
     }
+
+    uint8_t *pixels = (uint8_t *)surface->pixels;
+
+    // memcpy(surface->pixels, video_memory, SCREEN_HEIGHT * SCREEN_WIDTH / 8);
+
+    for (int i = 0; i < SCREEN_HEIGHT * SCREEN_WIDTH; i++)
+    {
+        int screenY = i / SCREEN_WIDTH;
+        int screenX = i % SCREEN_WIDTH;
+
+        int p = i % 8;
+        uint8_t bit = (video_memory[i / 8] >> (7 - p)) & 0x01;
+
+        uint8_t *target_pixel = pixels + screenY * surface->pitch + screenX * surface->format->BytesPerPixel;
+        *target_pixel = bit;
+    }
+
+    SDL_RenderClear(renderer);
+    SDL_Texture *screen_texture = SDL_CreateTextureFromSurface(renderer, surface);
+    SDL_RenderCopy(renderer, screen_texture, NULL, NULL);
+    SDL_RenderPresent(renderer);
+    SDL_DestroyTexture(screen_texture);
 
     return keepGoing;
 }
 
 SpaceInvadersViewSDL::~SpaceInvadersViewSDL()
 {
+    SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
     SDL_Quit();
 }

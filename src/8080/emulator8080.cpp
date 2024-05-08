@@ -5,6 +5,13 @@
 
 #include "../utils.h"
 
+#define ENABLE_LOGGING 0
+
+uint8_t *Emulator8080::video_memory()
+{
+    return &state.memory[0x2400];
+}
+
 std::string PC1_str(const State8080 &state)
 {
     std::stringstream ss{};
@@ -490,215 +497,211 @@ void Emulator8080::init()
 
 void Emulator8080::step()
 {
+    uint8_t op = state.memory[state.pc];
 
-    for (;;)
+#if ENABLE_LOGGING
+    std::cout << state.counter << " " << Utils::to_hex_string(state.pc) << " " << Utils::to_hex_string(op) << " ";
+#endif
+
+    switch (op)
     {
-        uint8_t op = state.memory[state.pc];
+    case 0x00: // NOP
+        NOP(state);
+        break;
+    case 0x01: // LXI BC
+        LXI(state, reinterpret_cast<uint16_t *>(&state.c), "BC");
+        break;
+    case 0x05: // DCR B
+        DCR_R(state, &state.b, "B");
+        break;
+    case 0x06: // MVI B
+        MVI_R(state, &state.b, "B");
+        break;
+    case 0x09: // DAD B
+        DAD(state, Utils::to_16(state.c, state.b), "BC");
+        break;
+    case 0x0D: // DCR C
+        DCR_R(state, &state.c, "C");
+        break;
+    case 0x0E: // MVI C
+        MVI_R(state, &state.c, "C");
+        break;
+    case 0x0F: // RRC
+        RRC(state);
+        break;
+    case 0x11: // LXI DE
+        LXI(state, reinterpret_cast<uint16_t *>(&state.e), "DE");
+        break;
+    case 0x13: // INX DE
+        INX(state, reinterpret_cast<uint16_t *>(&state.e), "DE");
+        break;
+    case 0x19: // DAD DE
+        DAD(state, Utils::to_16(state.e, state.d), "DE");
+        break;
+    case 0x1A: // LDAX DE
+        LDAX(state, Utils::to_16(state.e, state.d), "DE");
+        break;
+    case 0x21: // LXI HL
+        LXI(state, reinterpret_cast<uint16_t *>(&state.l), "HL");
+        break;
+    case 0x23: // INX HL
+        INX(state, reinterpret_cast<uint16_t *>(&state.l), "HL");
+        break;
+    case 0x24: // INR H
+        INR_R(state, &state.h, "H");
+        break;
+    case 0x26: // MVI H
+        MVI_R(state, &state.h, "H");
+        break;
+    case 0x29: // DAD H
+        DAD(state, Utils::to_16(state.l, state.h), "HL");
+        break;
+    case 0x31: // LXI SP
+        LXI(state, &state.sp, "SP");
+        break;
+    case 0x32: // STA
+        STA(state);
+        break;
+    case 0x36: // MVI (HL)
+        MVI_M(state);
+        break;
+    case 0x3A: // LDA adr
+        LDA(state);
+        break;
+    case 0x3E: // MVI A
+        MVI_R(state, &state.a, "A");
+        break;
+    case 0x56: // MOV D, (HL)
+        MOV_R_M(state, &state.d, "D");
+        break;
+    case 0x5E: // MOV E, (HL)
+        MOV_R_M(state, &state.e, "E");
+        break;
+    case 0x66: // MOV H, (HL)
+        MOV_R_M(state, &state.h, "H");
+        break;
+    case 0x6F: // MOV L, A
+        MOV_R_R(state, &state.l, state.a, "L", "A");
+        break;
+    case 0x70: // MOV (HL), B
+        MOV_M_R(state, state.b, "B");
+        break;
+    case 0x71: // MOV (HL), C
+        MOV_M_R(state, state.c, "C");
+        break;
+    case 0x72: // MOV (HL), D
+        MOV_M_R(state, state.d, "D");
+        break;
+    case 0x73: // MOV (HL), E
+        MOV_M_R(state, state.e, "E");
+        break;
+    case 0x74: // MOV (HL), H
+        MOV_M_R(state, state.h, "H");
+        break;
+    case 0x75: // MOV (HL), L
+        MOV_M_R(state, state.l, "L");
+        break;
+    case 0x77: // MOV (HL), A
+        MOV_M_R(state, state.a, "A");
+        break;
+    case 0x7A: // MOV A, D
+        MOV_R_R(state, &state.a, state.d, "A", "D");
+        break;
+    case 0x7B: // MOV A, E
+        MOV_R_R(state, &state.a, state.e, "A", "E");
+        break;
+    case 0x7C: // MOV A, H
+        MOV_R_R(state, &state.a, state.h, "A", "H");
+        break;
+    case 0x7E: // MOV A, (HL)
+        MOV_R_M(state, &state.a, "A");
+        break;
+    case 0xAF: // XRA A
+        XRA_R(state, state.a, "A");
+        break;
+    case 0xA7: // ANA A
+        ANA_R(state, state.a, "A");
+        break;
+    case 0xC1: // POP BC
+        POP(state, &state.c, &state.b, "BC");
+        break;
+    case 0xC2: // JNZ
+        JNZ(state);
+        break;
+    case 0xC3: // JMP
+        JMP(state);
+        break;
+    case 0xC5: // PUSH BC
+        PUSH(state, state.c, state.b, "BC");
+        break;
+    case 0xC6: // ADI
+        ADI(state);
+        break;
+    case 0xC9: // RET
+        RET(state);
+        break;
+    case 0xCD: // CALL
+        CALL(state);
+        break;
+    case 0xD1: // POP DE
+        POP(state, &state.e, &state.d, "DE");
+        break;
+    case 0xD5: // PUSH DE
+        PUSH(state, state.e, state.d, "DE");
+        break;
+    case 0xEB: // XCHG
+        XCHG(state);
+        break;
+    case 0xE1: // POP
+        POP(state, &state.l, &state.h, "(HL)");
+        break;
+    case 0xE5: // PUSH HL
+        PUSH(state, state.l, state.h, "HL");
+        break;
+    case 0xE6: // ANI
+        ANI(state);
+        break;
+    case 0xF1: // POP_PSW
+        POP_PSW(state);
+        break;
+    case 0xF5:
+        PUSH_PSW(state);
+        break;
+    case 0xFB: // EI
+        // TODO this is game specific, skip it for now
+        state.pc += 1;
+        break;
+    case 0xFE: // CPI
+        CPI(state);
+        break;
+    default:
 
-#if ENABLE_LOGGING
-        std::cout << state.counter << " " << Utils::to_hex_string(state.pc) << " " << Utils::to_hex_string(op) << " ";
-#endif
-
-        switch (op)
+        auto handler = custom_op_handlers[op];
+        if (handler)
         {
-        case 0x00: // NOP
-            NOP(state);
-            break;
-        case 0x01: // LXI B
-            LXI(state, reinterpret_cast<uint16_t *>(&state.c), "BC");
-            break;
-        case 0x05: // DCR B
-            DCR_R(state, &state.b, "B");
-            break;
-        case 0x06: // MVI B
-            MVI_R(state, &state.b, "B");
-            break;
-        case 0x09: // DAD B
-            DAD(state, Utils::to_16(state.c, state.b), "BC");
-            break;
-        case 0x0D: // DCR C
-            DCR_R(state, &state.c, "C");
-            break;
-        case 0x0E: // MVI C
-            MVI_R(state, &state.c, "C");
-            break;
-        case 0x0F: // RRC
-            RRC(state);
-            break;
-        case 0x11: // LXI DE
-            LXI(state, reinterpret_cast<uint16_t *>(&state.e), "DE");
-            break;
-        case 0x13: // INX DE
-            INX(state, reinterpret_cast<uint16_t *>(&state.e), "DE");
-            break;
-        case 0x19: // DAD D
-            DAD(state, Utils::to_16(state.e, state.d), "DE");
-            break;
-        case 0x1A: // LDAX DE
-            LDAX(state, Utils::to_16(state.e, state.d), "DE");
-            break;
-        case 0x21: // LXI HL
-            LXI(state, reinterpret_cast<uint16_t *>(&state.l), "HL");
-            break;
-        case 0x23: // INX HL
-            INX(state, reinterpret_cast<uint16_t *>(&state.l), "HL");
-            break;
-        case 0x24: // INR H
-            INR_R(state, &state.h, "H");
-            break;
-        case 0x26: // MVI H
-            MVI_R(state, &state.h, "H");
-            break;
-        case 0x29: // DAD H
-            DAD(state, Utils::to_16(state.l, state.h), "HL");
-            break;
-        case 0x31: // LXI SP
-            LXI(state, &state.sp, "SP");
-            break;
-        case 0x32: // STA
-            STA(state);
-            break;
-        case 0x36: // MVI (HL)
-            MVI_M(state);
-            break;
-        case 0x3A: // LDA adr
-            LDA(state);
-            break;
-        case 0x3E: // MVI A
-            MVI_R(state, &state.a, "A");
-            break;
-        case 0x56: // MOV D, (HL)
-            MOV_R_M(state, &state.d, "D");
-            break;
-        case 0x5E: // MOV E, (HL)
-            MOV_R_M(state, &state.e, "E");
-            break;
-        case 0x66: // MOV H, (HL)
-            MOV_R_M(state, &state.h, "H");
-            break;
-        case 0x6F: // MOV L, A
-            MOV_R_R(state, &state.l, state.a, "L", "A");
-            break;
-        case 0x70: // MOV (HL), B
-            MOV_M_R(state, state.b, "B");
-            break;
-        case 0x71: // MOV (HL), C
-            MOV_M_R(state, state.c, "C");
-            break;
-        case 0x72: // MOV (HL), D
-            MOV_M_R(state, state.d, "D");
-            break;
-        case 0x73: // MOV (HL), E
-            MOV_M_R(state, state.e, "E");
-            break;
-        case 0x74: // MOV (HL), H
-            MOV_M_R(state, state.h, "H");
-            break;
-        case 0x75: // MOV (HL), L
-            MOV_M_R(state, state.l, "L");
-            break;
-        case 0x77: // MOV (HL), A
-            MOV_M_R(state, state.a, "A");
-            break;
-        case 0x7A: // MOV A, D
-            MOV_R_R(state, &state.a, state.d, "A", "D");
-            break;
-        case 0x7B: // MOV A, E
-            MOV_R_R(state, &state.a, state.e, "A", "E");
-            break;
-        case 0x7C: // MOV A, H
-            MOV_R_R(state, &state.a, state.h, "A", "H");
-            break;
-        case 0x7E: // MOV A, (HL)
-            MOV_R_M(state, &state.a, "A");
-            break;
-        case 0xAF: // XRA A
-            XRA_R(state, state.a, "A");
-            break;
-        case 0xA7: // ANA A
-            ANA_R(state, state.a, "A");
-            break;
-        case 0xC1: // POP BC
-            POP(state, &state.c, &state.b, "BC");
-            break;
-        case 0xC2: // JNZ
-            JNZ(state);
-            break;
-        case 0xC3: // JMP
-            JMP(state);
-            break;
-        case 0xC5: // PUSH BC
-            PUSH(state, state.c, state.b, "BC");
-            break;
-        case 0xC6: // ADI
-            ADI(state);
-            break;
-        case 0xC9: // RET
-            RET(state);
-            break;
-        case 0xCD: // CALL
-            CALL(state);
-            break;
-        case 0xD1: // POP DE
-            POP(state, &state.e, &state.d, "DE");
-            break;
-        case 0xD5: // PUSH DE
-            PUSH(state, state.e, state.d, "DE");
-            break;
-        case 0xEB: // XCHG
-            XCHG(state);
-            break;
-        case 0xE1: // POP
-            POP(state, &state.l, &state.h, "(HL)");
-            break;
-        case 0xE5: // PUSH HL
-            PUSH(state, state.l, state.h, "HL");
-            break;
-        case 0xE6: // ANI
-            ANI(state);
-            break;
-        case 0xF1: // POP_PSW
-            POP_PSW(state);
-            break;
-        case 0xF5:
-            PUSH_PSW(state);
-            break;
-        case 0xFB: // EI
-            // TODO this is game specific, skip it for now
-            state.pc += 1;
-            break;
-        case 0xFE: // CPI
-            CPI(state);
-            break;
-        default:
-
-            auto handler = custom_op_handlers[op];
-            if (handler)
-            {
-                handler(state);
-            }
-            else
-            {
-#if !ENABLE_LOGGING
-                std::cerr << state.counter << " " << Utils::to_hex_string(state.pc) << " " << Utils::to_hex_string(op) << " ";
-#endif
-                std::cerr << "UNHANDLED OP" << '\n';
-
-#if !ENABLE_LOGGING
-                std::cout << state;
-                std::cout << "\n\n";
-#endif
-                exit(1);
-            }
+            handler(state);
         }
+        else
+        {
+#if !ENABLE_LOGGING
+            std::cerr << state.counter << " " << Utils::to_hex_string(state.pc) << " " << Utils::to_hex_string(op) << " ";
+#endif
+            std::cerr << "UNHANDLED OP" << '\n';
+
+#if !ENABLE_LOGGING
+            std::cout << state;
+            std::cout << "\n\n";
+#endif
+            exit(1);
+        }
+    }
 
 #if ENABLE_LOGGING
-        std::cout << state;
-        std::cout << "\n\n";
+    std::cout << state;
+    std::cout << "\n\n";
 #endif
 
-        state.counter++;
-    }
+    state.counter++;
 }
 
 void Emulator8080::set_custom_opcode_handler(

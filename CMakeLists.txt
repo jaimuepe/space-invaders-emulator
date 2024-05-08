@@ -3,7 +3,10 @@ project(SpaceInvaders VERSION 0.1.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 
-add_subdirectory(vendored/sdl EXCLUDE_FROM_ALL)
+# add_subdirectory(vendored/sdl EXCLUDE_FROM_ALL)
+
+find_package(SDL2 REQUIRED)
+include_directories(${SDL2_INCLUDE_DIRS})
 
 add_executable(SpaceInvaders 
     src/main.cpp 
@@ -23,7 +26,7 @@ add_executable(SpaceInvaders
     src/8080/mem8080.h
     src/8080/mem8080.cpp)
 
-target_link_libraries(SpaceInvaders PRIVATE SDL3::SDL3)
+target_link_libraries(SpaceInvaders PRIVATE ${SDL2_LIBRARIES})
 
 if (WIN32)
     add_custom_command(

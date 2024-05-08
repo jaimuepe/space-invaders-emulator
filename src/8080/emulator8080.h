@@ -12,7 +12,9 @@ public:
     void step();
 
     void set_custom_opcode_handler(uint8_t op, std::function<void(State8080 &state)> handler);
-
+    
+    uint8_t* video_memory();
+    
 private:
     State8080 state{};
 
