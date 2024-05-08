@@ -80,10 +80,8 @@ bool SpaceInvadersViewSDL::render(uint8_t *video_memory)
 
             uint8_t bit = (video_memory[idx / 8] >> (7 - p)) & 0x01;
 
-            int ii = j;
-            int jj = i + 1;
+            uint8_t *target_pixel = pixels + j * surface->pitch + i * surface->format->BytesPerPixel;
 
-            uint8_t *target_pixel = pixels + ii * surface->pitch + jj * surface->format->BytesPerPixel;
             *target_pixel = bit;
         }
     }
