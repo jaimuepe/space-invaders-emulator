@@ -7,6 +7,31 @@
 
 #define ENABLE_LOGGING 0
 
+// clang-format off
+uint8_t cycles8080[] = 
+{
+    4, 10, 7, 5, 5, 5, 7, 4, 4, 10, 7, 5, 5, 5, 7, 4, //0x00..0x0f
+    4, 10, 7, 5, 5, 5, 7, 4, 4, 10, 7, 5, 5, 5, 7, 4, //0x10..0x1f
+    4, 10, 16, 5, 5, 5, 7, 4, 4, 10, 16, 5, 5, 5, 7, 4, //etc
+    4, 10, 13, 5, 10, 10, 10, 4, 4, 10, 13, 5, 5, 5, 7, 4,
+
+    5, 5, 5, 5, 5, 5, 7, 5, 5, 5, 5, 5, 5, 5, 7, 5, //0x40..0x4f
+    5, 5, 5, 5, 5, 5, 7, 5, 5, 5, 5, 5, 5, 5, 7, 5,
+    5, 5, 5, 5, 5, 5, 7, 5, 5, 5, 5, 5, 5, 5, 7, 5,
+    7, 7, 7, 7, 7, 7, 7, 7, 5, 5, 5, 5, 5, 5, 7, 5,
+
+    4, 4, 4, 4, 4, 4, 7, 4, 4, 4, 4, 4, 4, 4, 7, 4, //0x80..8x4f
+    4, 4, 4, 4, 4, 4, 7, 4, 4, 4, 4, 4, 4, 4, 7, 4,
+    4, 4, 4, 4, 4, 4, 7, 4, 4, 4, 4, 4, 4, 4, 7, 4,
+    4, 4, 4, 4, 4, 4, 7, 4, 4, 4, 4, 4, 4, 4, 7, 4,
+
+    11, 10, 10, 10, 17, 11, 7, 11, 11, 10, 10, 10, 10, 17, 7, 11, //0xc0..0xcf
+    11, 10, 10, 10, 17, 11, 7, 11, 11, 10, 10, 10, 10, 17, 7, 11, 
+    11, 10, 10, 18, 17, 11, 7, 11, 11, 5, 10, 5, 17, 17, 7, 11, 
+    11, 10, 10, 4, 17, 11, 7, 11, 11, 5, 10, 4, 17, 17, 7, 11, 
+};
+// clang-format on
+
 uint8_t *Emulator8080::video_memory()
 {
     return &state.memory[0x2400];
@@ -41,7 +66,6 @@ void NOP(State8080 &state)
     std::cout << "NOP" << '\n';
 #endif
     state.pc++;
-    state.cycles += 4;
 }
 
 void LXI(State8080 &state, uint16_t *pos, const char *name)
@@ -56,7 +80,6 @@ void LXI(State8080 &state, uint16_t *pos, const char *name)
     *pos = hi << 8 | lo;
 
     state.pc += 3;
-    state.cycles += 10;
 }
 
 void DAD(State8080 &state, uint16_t add, const char *name)
@@ -77,7 +100,6 @@ void DAD(State8080 &state, uint16_t add, const char *name)
     state.flags.c = (hl & 0xFFFF0000) != 0;
 
     state.pc++;
-    state.cycles += 10;
 }
 
 void XCHG(State8080 &state)
@@ -95,7 +117,6 @@ void XCHG(State8080 &state)
     state.e = l;
 
     state.pc++;
-    state.cycles += 5;
 }
 
 void LDAX(State8080 &state, uint16_t pos, const char *name)
@@ -106,7 +127,6 @@ void LDAX(State8080 &state, uint16_t pos, const char *name)
     state.a = state.memory[pos];
 
     state.pc++;
-    state.cycles += 7;
 }
 
 void LDA(State8080 &state)
@@ -122,7 +142,6 @@ void LDA(State8080 &state)
     state.a = state.memory[addr];
 
     state.pc += 3;
-    state.cycles += 13;
 }
 
 void MVI_R(State8080 &state, uint8_t *pos, const char *name)
@@ -135,7 +154,6 @@ void MVI_R(State8080 &state, uint8_t *pos, const char *name)
     *pos = val;
 
     state.pc += 2;
-    state.cycles += 7;
 }
 
 void MVI_M(State8080 &state)
@@ -150,7 +168,6 @@ void MVI_M(State8080 &state)
     state.memory[hl] = state.memory[state.pc + 1];
 
     state.pc += 2;
-    state.cycles += 10;
 }
 
 void INR_R(State8080 &state, uint8_t *pos, const char *name)
@@ -167,7 +184,6 @@ void INR_R(State8080 &state, uint8_t *pos, const char *name)
     *pos = h & 0xFF;
 
     state.pc++;
-    state.cycles += 5;
 }
 
 void INX(State8080 &state, uint16_t *pos, const char *name)
@@ -178,7 +194,6 @@ void INX(State8080 &state, uint16_t *pos, const char *name)
     (*pos)++;
 
     state.pc++;
-    state.cycles += 5;
 }
 
 void DCR_R(State8080 &state, uint8_t *pos, const char *name)
@@ -194,7 +209,6 @@ void DCR_R(State8080 &state, uint8_t *pos, const char *name)
     state.flags.p = Utils::parity(r);
 
     state.pc++;
-    state.cycles += 5;
 }
 
 void MOV_R_R(State8080 &state, uint8_t *pos, uint8_t value, const char *nameL, const char *nameR)
@@ -205,7 +219,6 @@ void MOV_R_R(State8080 &state, uint8_t *pos, uint8_t value, const char *nameL, c
     *pos = value;
 
     state.pc++;
-    state.cycles += 5;
 }
 
 void MOV_M_R(State8080 &state, uint8_t value, const char *name)
@@ -217,7 +230,6 @@ void MOV_M_R(State8080 &state, uint8_t value, const char *name)
     state.memory[hl] = value;
 
     state.pc++;
-    state.cycles += 7;
 }
 
 void MOV_R_M(State8080 &state, uint8_t *pos, const char *name)
@@ -229,7 +241,6 @@ void MOV_R_M(State8080 &state, uint8_t *pos, const char *name)
     *pos = state.memory[hl];
 
     state.pc++;
-    state.cycles += 7;
 }
 
 void STA(State8080 &state)
@@ -245,7 +256,6 @@ void STA(State8080 &state)
     state.memory[addr] = state.a;
 
     state.pc += 3;
-    state.cycles += 13;
 }
 
 void CPI(State8080 &state)
@@ -261,7 +271,6 @@ void CPI(State8080 &state)
     set_alu_flags(state, res);
 
     state.pc += 2;
-    state.cycles += 7;
 }
 
 void XRA_R(State8080 &state, uint8_t value, const char *name)
@@ -279,8 +288,7 @@ void XRA_R(State8080 &state, uint8_t value, const char *name)
     state.flags.p = Utils::parity(a);
     state.flags.c = false;
 
-    state.pc += 1;
-    state.cycles += 4;
+    state.pc++;
 }
 
 void RRC(State8080 &state)
@@ -295,7 +303,6 @@ void RRC(State8080 &state)
     state.flags.c = bit_0;
 
     state.pc++;
-    state.cycles += 4;
 }
 
 void ADI(State8080 &state)
@@ -310,7 +317,6 @@ void ADI(State8080 &state)
     state.a = a & 0xFF;
 
     state.pc += 2;
-    state.cycles += 7;
 }
 
 void ANA_R(State8080 &state, uint8_t value, const char *name)
@@ -328,7 +334,6 @@ void ANA_R(State8080 &state, uint8_t value, const char *name)
     state.flags.c = false;
 
     state.pc++;
-    state.cycles += 4;
 }
 
 void ANI(State8080 &state)
@@ -344,7 +349,6 @@ void ANI(State8080 &state)
     state.a = a & 0xFF;
 
     state.pc += 2;
-    state.cycles += 7;
 }
 
 void CALL(State8080 &state)
@@ -364,7 +368,6 @@ void CALL(State8080 &state)
     state.sp -= 2;
 
     state.pc = callAddr;
-    state.cycles += 17;
 }
 
 void RET(State8080 &state)
@@ -380,7 +383,6 @@ void RET(State8080 &state)
     state.pc = retAddr;
 
     state.sp += 2;
-    state.cycles += 10;
 }
 
 void PUSH(State8080 &state, uint8_t lo, uint8_t hi, const char *name)
@@ -395,7 +397,6 @@ void PUSH(State8080 &state, uint8_t lo, uint8_t hi, const char *name)
     state.sp -= 2;
 
     state.pc++;
-    state.cycles += 11;
 }
 
 void PUSH_PSW(State8080 &state)
@@ -417,7 +418,6 @@ void PUSH_PSW(State8080 &state)
     state.sp -= 2;
 
     state.pc++;
-    state.cycles += 11;
 }
 
 void POP(State8080 &state, uint8_t *lo, uint8_t *hi, const char *name)
@@ -432,7 +432,6 @@ void POP(State8080 &state, uint8_t *lo, uint8_t *hi, const char *name)
     state.sp += 2;
 
     state.pc++;
-    state.cycles += 10;
 }
 
 void POP_PSW(State8080 &state)
@@ -454,7 +453,6 @@ void POP_PSW(State8080 &state)
     state.sp += 2;
 
     state.pc++;
-    state.cycles += 10;
 }
 
 void JMP(State8080 &state)
@@ -467,7 +465,6 @@ void JMP(State8080 &state)
         state.memory[state.pc + 2]);
 
     state.pc = jmpAddr;
-    state.cycles += 10;
 }
 
 void JNZ(State8080 &state)
@@ -487,7 +484,22 @@ void JNZ(State8080 &state)
     {
         state.pc += 3;
     }
-    state.cycles += 10;
+}
+
+void OUT(State8080 &state, std::function<void(State8080 &)> mapping)
+{
+#if ENABLE_LOGGING
+    std::cout << "OUT " << PC1_str(state) << '\n';
+#endif
+
+    uint8_t port = state.memory[state.pc + 1];
+
+    if (mapping)
+    {
+        mapping(state);
+    }
+
+    state.pc += 2;
 }
 
 void Emulator8080::init()
@@ -495,7 +507,7 @@ void Emulator8080::init()
     state.init();
 }
 
-void Emulator8080::step()
+int Emulator8080::step()
 {
     uint8_t op = state.memory[state.pc];
 
@@ -646,6 +658,9 @@ void Emulator8080::step()
     case 0xD1: // POP DE
         POP(state, &state.e, &state.d, "DE");
         break;
+    case 0xD3: // OUT
+        OUT(state, out_mappings[state.memory[state.pc + 1]]);
+        break;
     case 0xD5: // PUSH DE
         PUSH(state, state.e, state.d, "DE");
         break;
@@ -675,25 +690,18 @@ void Emulator8080::step()
         CPI(state);
         break;
     default:
-
-        auto handler = custom_op_handlers[op];
-        if (handler)
-        {
-            handler(state);
-        }
-        else
-        {
+    {
 #if !ENABLE_LOGGING
-            std::cerr << state.counter << " " << Utils::to_hex_string(state.pc) << " " << Utils::to_hex_string(op) << " ";
+        std::cerr << state.counter << " " << Utils::to_hex_string(state.pc) << " " << Utils::to_hex_string(op) << " ";
 #endif
-            std::cerr << "UNHANDLED OP" << '\n';
+        std::cerr << "UNHANDLED OP" << '\n';
 
 #if !ENABLE_LOGGING
-            std::cout << state;
-            std::cout << "\n\n";
+        std::cout << state;
+        std::cout << "\n\n";
 #endif
-            exit(1);
-        }
+        exit(1);
+    }
     }
 
 #if ENABLE_LOGGING
@@ -701,12 +709,15 @@ void Emulator8080::step()
     std::cout << "\n\n";
 #endif
 
+    int cycles = cycles8080[op];
+
+    state.cycles += cycles;
     state.counter++;
+
+    return cycles;
 }
 
-void Emulator8080::set_custom_opcode_handler(
-    uint8_t op,
-    std::function<void(State8080 &state)> handler)
+void Emulator8080::connect_out_port(uint8_t port, std::function<void(State8080 &state)> handler)
 {
-    custom_op_handlers[op] = handler;
+    out_mappings[port] = handler;
 }

@@ -3,9 +3,28 @@ project(SpaceInvaders VERSION 0.1.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 
-# add_subdirectory(vendored/sdl EXCLUDE_FROM_ALL)
+if (WIN32)
 
-find_package(SDL2 REQUIRED)
+    include(FetchContent)
+
+    Set(FETCHCONTENT_QUIET FALSE)
+
+    FetchContent_Declare(
+        SDL2
+        GIT_REPOSITORY https://github.com/libsdl-org/SDL.git
+        GIT_TAG release-2.30.3
+        GIT_SHALLOW TRUE
+        GIT_PROGRESS TRUE)
+
+    FetchContent_MakeAvailable(SDL2)
+
+    SET(SDL2_INCLUDE_DIRS ${SDL2_SOURCE_DIR}/include)
+    SET(SDL2_LIBRARIES SDL2::SDL2)
+
+else()
+    find_package(SDL2 REQUIRED)
+endif()
+
 include_directories(${SDL2_INCLUDE_DIRS})
 
 add_executable(SpaceInvaders 
@@ -32,7 +51,7 @@ if (WIN32)
     add_custom_command(
         TARGET SpaceInvaders POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different 
-            "$<TARGET_FILE:SDL3::SDL3>" 
+            "$<TARGET_FILE:SDL2::SDL2>" 
             "$<TARGET_FILE_DIR:SpaceInvaders>"
         VERBATIM)
 endif()

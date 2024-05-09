@@ -27,6 +27,8 @@ public:
 
     Mem8080 memory{};
 
+    bool interruptions_enabled{false};
+
     struct Flags
     {
         bool s;

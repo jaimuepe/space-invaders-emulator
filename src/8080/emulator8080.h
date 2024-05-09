@@ -9,14 +9,14 @@ class Emulator8080
 public:
     void init();
 
-    void step();
-
-    void set_custom_opcode_handler(uint8_t op, std::function<void(State8080 &state)> handler);
+    int step();
     
+    void connect_out_port(uint8_t port, std::function<void(State8080 &state)> handler);
+
     uint8_t* video_memory();
     
 private:
     State8080 state{};
 
-    std::function<void(State8080 &state)> custom_op_handlers[0xFF];
+    std::function<void(State8080 &state)>  out_mappings[8];
 };
