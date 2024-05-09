@@ -77,7 +77,7 @@ void SpaceInvadersViewSDL::poll_events()
     }
 }
 
-void SpaceInvadersViewSDL::render(uint8_t *video_memory)
+void SpaceInvadersViewSDL::render(const uint8_t *video_memory)
 {
     if (SDL_MUSTLOCK(surface))
     {

@@ -17,7 +17,7 @@ public:
 
     void connect_out_port(uint8_t port, std::function<void(State8080 &state)> handler);
 
-    uint8_t *video_memory();
+    const uint8_t *video_memory();
 
 private:
     State8080 state{};

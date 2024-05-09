@@ -32,7 +32,7 @@ uint8_t cycles8080[] =
 };
 // clang-format on
 
-uint8_t *Emulator8080::video_memory()
+const uint8_t *Emulator8080::video_memory()
 {
     return &state.memory[0x2400];
 }
@@ -505,6 +505,22 @@ void RRC(State8080 &state)
     state.a = state.a >> 1 | (bit_0 << 7);
 
     state.flags.c = bit_0;
+
+    state.pc++;
+}
+
+void ADD_M(State8080 &state)
+{
+#if ENABLE_LOGGING
+    std::cout << "ADD (HL)" << '\n';
+#endif
+
+    uint8_t value = state.memory[Utils::to_16(state.l, state.h)];
+    uint16_t a = static_cast<uint16_t>(state.a) + value;
+
+    set_alu_flags(state, a);
+
+    state.a = a & 0xFF;
 
     state.pc++;
 }
@@ -1123,6 +1139,9 @@ int Emulator8080::step()
     case 0x3E: // MVI A
         MVI_R(state, &state.a, "A");
         break;
+    case 0x41: // MOV B, C
+        MOV_R_R(state, &state.b, state.c, "B", "C");
+        break;
     case 0x42: // MOV B, D
         MOV_R_R(state, &state.b, state.d, "B", "D");
         break;
@@ -1141,6 +1160,9 @@ int Emulator8080::step()
     case 0x57: // MOV D, A
         MOV_R_R(state, &state.d, state.a, "D", "A");
         break;
+    case 0x58: // MOV E, B
+        MOV_R_R(state, &state.e, state.b, "E", "B");
+        break;
     case 0x5E: // MOV E, (HL)
         MOV_R_M(state, &state.e, "E");
         break;
@@ -1155,6 +1177,9 @@ int Emulator8080::step()
         break;
     case 0x67: // MOV H, A
         MOV_R_R(state, &state.h, state.a, "H", "A");
+        break;
+    case 0x68: // MOV L, B
+        MOV_R_R(state, &state.l, state.b, "L", "B");
         break;
     case 0x6F: // MOV L, A
         MOV_R_R(state, &state.l, state.a, "L", "A");
@@ -1207,6 +1232,9 @@ int Emulator8080::step()
     case 0x82: // ADD D
         ADD_R(state, state.d, "D");
         break;
+    case 0x86: // ADD M
+        ADD_M(state);
+        break;
     case 0xA2: // ANA D
         ANA_R(state, state.d, "D");
         break;
@@ -1249,6 +1277,9 @@ int Emulator8080::step()
     case 0xC6: // ADI
         ADI(state);
         break;
+    case 0xC7: // RST 0
+        RST(state, 0);
+        break;
     case 0xC8: // RZ
         RZ(state);
         break;
@@ -1263,6 +1294,9 @@ int Emulator8080::step()
         break;
     case 0xCD: // CALL
         CALL(state);
+        break;
+    case 0xCF: // RST 1
+        RST(state, 1);
         break;
     case 0xD0:
         RNC(state);
@@ -1339,6 +1373,9 @@ int Emulator8080::step()
         break;
     case 0xFE: // CPI
         CPI(state);
+        break;
+    case 0xFF: // RST 7
+        RST(state, 7);
         break;
     default:
     {

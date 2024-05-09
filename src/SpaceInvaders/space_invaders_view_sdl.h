@@ -18,7 +18,7 @@ public:
 
     virtual void poll_events() override;
 
-    virtual void render(uint8_t *video_memory) override;
+    virtual void render(const uint8_t *video_memory) override;
 
     virtual bool should_quit() const override;
 
