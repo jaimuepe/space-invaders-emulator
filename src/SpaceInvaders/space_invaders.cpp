@@ -35,8 +35,12 @@ void SpaceInvaders::run()
 {
     auto last_cpu_time = std::chrono::high_resolution_clock::now();
 
+    uint64_t render_time_accumulator{0};
+
     for (;;)
     {
+        auto time = std::chrono::high_resolution_clock::now();
+
         view->poll_events();
 
         if (view->should_quit())
@@ -44,27 +48,38 @@ void SpaceInvaders::run()
             break;
         }
 
-        if (!view->render(emulator.video_memory()))
+        auto render_time_delta = std::chrono::duration_cast<std::chrono::nanoseconds>(time - last_cpu_time);
+        render_time_accumulator += render_time_delta.count();
+
+        constexpr long frame_time_ns = 16666666; // 60 fps
+
+        if (render_time_accumulator > frame_time_ns)
         {
-            continue;
+            while (render_time_accumulator > frame_time_ns)
+            {
+                render_time_accumulator -= frame_time_ns;
+            }
+
+            view->render(emulator.video_memory());
+
+            if (emulator.interruptions_enabled())
+            {
+                emulator.interrupt(0xD7); // RST 2
+            }
         }
 
-        auto cpu_time = std::chrono::high_resolution_clock::now();
-
-        auto elapsed_time_us = std::chrono::duration_cast<std::chrono::microseconds>(cpu_time - last_cpu_time).count();
+        auto elapsed_time_us = std::chrono::duration_cast<std::chrono::microseconds>(time - last_cpu_time).count();
 
         // how many cycles can we fit in the elapsed time?
         // the cpu runs at 2MHz, 2M cycles per second -> 2 cycles per us
         int cycles = elapsed_time_us * 2;
-
-        std::cout << "work time: " << elapsed_time_us << "us -> " << cycles << " cycles" << '\n';
 
         while (cycles > 0)
         {
             cycles -= emulator.step();
         }
 
-        last_cpu_time = cpu_time;
+        last_cpu_time = time;
     }
 }
 

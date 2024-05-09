@@ -52,6 +52,12 @@ std::string PC2_str(const State8080 &state)
     return ss.str();
 }
 
+void print_state(const State8080 &state)
+{
+    std::cout << state.counter << " " << Utils::to_hex_string(state.pc) << '\n';
+    std::cout << state << '\n';
+}
+
 void set_alu_flags(State8080 &state, uint16_t result)
 {
     state.flags.z = result == 0;
@@ -170,6 +176,16 @@ void MVI_M(State8080 &state)
     state.pc += 2;
 }
 
+void STC(State8080 &state)
+{
+#if ENABLE_LOGGING
+    std::cout << "STC" << '\n';
+#endif
+
+    state.flags.c = true;
+    state.pc++;
+}
+
 void INR_R(State8080 &state, uint8_t *pos, const char *name)
 {
 #if ENABLE_LOGGING
@@ -202,6 +218,24 @@ void DCR_R(State8080 &state, uint8_t *pos, const char *name)
     std::cout << "DCR " << name << '\n';
 #endif
     uint8_t &r = *pos;
+    r--;
+
+    state.flags.z = r == 0;
+    state.flags.s = (r & 0x80) != 0;
+    state.flags.p = Utils::parity(r);
+
+    state.pc++;
+}
+
+void DCR_M(State8080 &state)
+{
+#if ENABLE_LOGGING
+    std::cout << "DCR (HL)" << '\n';
+#endif
+
+    uint16_t hl = Utils::to_16(state.l, state.h);
+
+    uint8_t &r = state.memory[hl];
     r--;
 
     state.flags.z = r == 0;
@@ -351,6 +385,24 @@ void ANI(State8080 &state)
     state.pc += 2;
 }
 
+void RST(State8080 &state, int rst_num)
+{
+#if ENABLE_LOGGING
+    std::cout << "RST " << rst_num << '\n';
+#endif
+
+    uint16_t callAddr = rst_num * 8;
+
+    uint16_t retAddr = state.pc;
+
+    state.memory[state.sp - 1] = (retAddr >> 8) & 0xff;
+    state.memory[state.sp - 2] = retAddr & 0xff;
+
+    state.sp -= 2;
+
+    state.pc = callAddr;
+}
+
 void CALL(State8080 &state)
 {
 #if ENABLE_LOGGING
@@ -383,6 +435,22 @@ void RET(State8080 &state)
     state.pc = retAddr;
 
     state.sp += 2;
+}
+
+void RC(State8080 &state)
+{
+#if ENABLE_LOGGING
+    std::cout << "RC" << '\n';
+#endif
+
+    if (state.flags.c)
+    {
+        RET(state);
+    }
+    else
+    {
+        state.pc++;
+    }
 }
 
 void PUSH(State8080 &state, uint8_t lo, uint8_t hi, const char *name)
@@ -418,6 +486,38 @@ void PUSH_PSW(State8080 &state)
     state.sp -= 2;
 
     state.pc++;
+}
+
+void RZ(State8080 &state)
+{
+#if ENABLE_LOGGING
+    std::cout << "RZ" << '\n';
+#endif
+
+    if (state.flags.z)
+    {
+        RET(state);
+    }
+    else
+    {
+        state.pc++;
+    }
+}
+
+void RNZ(State8080 &state)
+{
+#if ENABLE_LOGGING
+    std::cout << "RNZ" << '\n';
+#endif
+
+    if (!state.flags.z)
+    {
+        RET(state);
+    }
+    else
+    {
+        state.pc++;
+    }
 }
 
 void POP(State8080 &state, uint8_t *lo, uint8_t *hi, const char *name)
@@ -474,16 +574,52 @@ void JNZ(State8080 &state)
 #endif
     if (!state.flags.z)
     {
-        uint16_t jmpAddr = Utils::to_16(
-            state.memory[state.pc + 1],
-            state.memory[state.pc + 2]);
-
-        state.pc = jmpAddr;
+        JMP(state);
     }
     else
     {
         state.pc += 3;
     }
+}
+
+void JZ(State8080 &state)
+{
+#if ENABLE_LOGGING
+    std::cout << "JZ " << PC2_str(state) << '\n';
+#endif
+    if (state.flags.z)
+    {
+        JMP(state);
+    }
+    else
+    {
+        state.pc += 3;
+    }
+}
+
+void JC(State8080 &state)
+{
+#if ENABLE_LOGGING
+    std::cout << "JC " << PC2_str(state) << '\n';
+#endif
+
+    if (state.flags.c)
+    {
+        JMP(state);
+    }
+    else
+    {
+        state.pc += 3;
+    }
+}
+
+void IN(State8080 &state)
+{
+#if ENABLE_LOGGING
+    std::cout << "IN " << PC1_str(state) << '\n';
+#endif
+
+    state.pc += 2;
 }
 
 void OUT(State8080 &state, std::function<void(State8080 &)> mapping)
@@ -507,9 +643,30 @@ void Emulator8080::init()
     state.init();
 }
 
+bool Emulator8080::interruptions_enabled() const
+{
+    return state.interruptions_enabled;
+}
+
+void Emulator8080::interrupt(uint8_t op_code)
+{
+    state.bus.push_back(op_code);
+}
+
 int Emulator8080::step()
 {
-    uint8_t op = state.memory[state.pc];
+    bool is_interruption = state.interruptions_enabled && state.bus.size() > 0;
+
+    uint8_t op;
+    if (is_interruption)
+    {
+        op = state.bus[0];
+        state.bus.erase(state.bus.begin());
+    }
+    else
+    {
+        op = state.memory[state.pc];
+    }
 
 #if ENABLE_LOGGING
     std::cout << state.counter << " " << Utils::to_hex_string(state.pc) << " " << Utils::to_hex_string(op) << " ";
@@ -523,6 +680,9 @@ int Emulator8080::step()
     case 0x01: // LXI BC
         LXI(state, reinterpret_cast<uint16_t *>(&state.c), "BC");
         break;
+    case 0x03: // INX BC
+        INX(state, reinterpret_cast<uint16_t *>(&state.c), "BC");
+        break;
     case 0x05: // DCR B
         DCR_R(state, &state.b, "B");
         break;
@@ -531,6 +691,9 @@ int Emulator8080::step()
         break;
     case 0x09: // DAD B
         DAD(state, Utils::to_16(state.c, state.b), "BC");
+        break;
+    case 0x0A: // LDAX BC
+        LDAX(state, Utils::to_16(state.c, state.b), "BC");
         break;
     case 0x0D: // DCR C
         DCR_R(state, &state.c, "C");
@@ -568,29 +731,53 @@ int Emulator8080::step()
     case 0x29: // DAD H
         DAD(state, Utils::to_16(state.l, state.h), "HL");
         break;
+    case 0x2E: // MVI L
+        MVI_R(state, &state.l, "L");
+        break;
     case 0x31: // LXI SP
         LXI(state, &state.sp, "SP");
         break;
     case 0x32: // STA
         STA(state);
         break;
+    case 0x35: // DCR M
+        DCR_M(state);
+        break;
     case 0x36: // MVI (HL)
         MVI_M(state);
+        break;
+    case 0x37: // STC
+        STC(state);
         break;
     case 0x3A: // LDA adr
         LDA(state);
         break;
+    case 0x3D: // DCR A
+        DCR_R(state, &state.a, "A");
+        break;
     case 0x3E: // MVI A
         MVI_R(state, &state.a, "A");
+        break;
+    case 0x4F: // MOV C, A
+        MOV_R_R(state, &state.c, state.a, "C", "A");
         break;
     case 0x56: // MOV D, (HL)
         MOV_R_M(state, &state.d, "D");
         break;
+    case 0x57: // MOV D, A
+        MOV_R_R(state, &state.d, state.a, "D", "A");
+        break;
     case 0x5E: // MOV E, (HL)
         MOV_R_M(state, &state.e, "E");
         break;
+    case 0x5F: // MOV E, A
+        MOV_R_R(state, &state.e, state.a, "E", "A");
+        break;
     case 0x66: // MOV H, (HL)
         MOV_R_M(state, &state.h, "H");
+        break;
+    case 0x67: // MOV H, A
+        MOV_R_R(state, &state.h, state.a, "H", "A");
         break;
     case 0x6F: // MOV L, A
         MOV_R_R(state, &state.l, state.a, "L", "A");
@@ -616,6 +803,9 @@ int Emulator8080::step()
     case 0x77: // MOV (HL), A
         MOV_M_R(state, state.a, "A");
         break;
+    case 0x79: // MOV A, C
+        MOV_R_R(state, &state.a, state.c, "A", "C");
+        break;
     case 0x7A: // MOV A, D
         MOV_R_R(state, &state.a, state.d, "A", "D");
         break;
@@ -625,6 +815,9 @@ int Emulator8080::step()
     case 0x7C: // MOV A, H
         MOV_R_R(state, &state.a, state.h, "A", "H");
         break;
+    case 0x7D: // MOV A, L
+        MOV_R_R(state, &state.a, state.l, "A", "L");
+        break;
     case 0x7E: // MOV A, (HL)
         MOV_R_M(state, &state.a, "A");
         break;
@@ -633,6 +826,9 @@ int Emulator8080::step()
         break;
     case 0xA7: // ANA A
         ANA_R(state, state.a, "A");
+        break;
+    case 0xC0: // RNZ
+        RNZ(state);
         break;
     case 0xC1: // POP BC
         POP(state, &state.c, &state.b, "BC");
@@ -649,8 +845,14 @@ int Emulator8080::step()
     case 0xC6: // ADI
         ADI(state);
         break;
+    case 0xC8: // RZ
+        RZ(state);
+        break;
     case 0xC9: // RET
         RET(state);
+        break;
+    case 0xCA: // JZ
+        JZ(state);
         break;
     case 0xCD: // CALL
         CALL(state);
@@ -663,6 +865,18 @@ int Emulator8080::step()
         break;
     case 0xD5: // PUSH DE
         PUSH(state, state.e, state.d, "DE");
+        break;
+    case 0xD7: // RST 2
+        RST(state, 2);
+        break;
+    case 0xD8: // RC
+        RC(state);
+        break;
+    case 0xDA: // JC
+        JC(state);
+        break;
+    case 0xDB: // IN
+        IN(state);
         break;
     case 0xEB: // XCHG
         XCHG(state);
@@ -683,7 +897,7 @@ int Emulator8080::step()
         PUSH_PSW(state);
         break;
     case 0xFB: // EI
-        // TODO this is game specific, skip it for now
+        state.interruptions_enabled = true;
         state.pc += 1;
         break;
     case 0xFE: // CPI

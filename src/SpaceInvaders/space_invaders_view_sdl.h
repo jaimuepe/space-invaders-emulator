@@ -18,7 +18,7 @@ public:
 
     virtual void poll_events() override;
 
-    virtual bool render(uint8_t *video_memory) override;
+    virtual void render(uint8_t *video_memory) override;
 
     virtual bool should_quit() const override;
 
@@ -26,10 +26,6 @@ public:
 
 private:
     bool exit_requested{};
-
-    float accumulator{0.0f};
-
-    uint64_t last_performance_counter{0};
 
     SDL_Window *window{};
 

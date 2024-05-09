@@ -9,7 +9,7 @@ public:
 
     virtual void poll_events() = 0;
     
-    virtual bool render(uint8_t *video_memory) = 0;
+    virtual void render(uint8_t *video_memory) = 0;
 
     virtual bool should_quit() const = 0;
 

@@ -1,9 +1,10 @@
 #pragma once
 
+#include "mem8080.h"
+
 #include <cstdint>
 #include <ostream>
-
-#include "mem8080.h"
+#include <vector>
 
 struct State8080
 {
@@ -28,6 +29,8 @@ public:
     Mem8080 memory{};
 
     bool interruptions_enabled{false};
+
+    std::vector<uint8_t> bus{};
 
     struct Flags
     {

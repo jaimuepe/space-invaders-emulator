@@ -77,67 +77,41 @@ void SpaceInvadersViewSDL::poll_events()
     }
 }
 
-bool SpaceInvadersViewSDL::render(uint8_t *video_memory)
+void SpaceInvadersViewSDL::render(uint8_t *video_memory)
 {
-    Uint64 performance_counter = SDL_GetPerformanceCounter();
-
-    if (last_performance_counter == 0)
+    if (SDL_MUSTLOCK(surface))
     {
-        last_performance_counter = performance_counter;
+        SDL_LockSurface(surface);
     }
 
-    float delta = (float)(performance_counter - last_performance_counter) / SDL_GetPerformanceFrequency();
-    last_performance_counter = performance_counter;
+    uint8_t *pixels = (uint8_t *)surface->pixels;
 
-    accumulator += delta;
-
-    constexpr float frame_time = 0.0166666f;
-
-    bool render = accumulator > frame_time;
-
-    if (render)
+    // video buffer is rotated -90º
+    for (int i = 0; i < SCREEN_WIDTH; i++)
     {
-        while (accumulator > frame_time)
+        for (int j = 0; j < SCREEN_HEIGHT; j++)
         {
-            accumulator -= frame_time;
+            int idx = i * SCREEN_HEIGHT + j;
+            int p = idx % 8;
+
+            uint8_t bit = (video_memory[idx / 8] >> (7 - p)) & 0x01;
+
+            uint8_t *target_pixel = pixels + j * surface->pitch + i * surface->format->BytesPerPixel;
+
+            *target_pixel = bit;
         }
-
-        if (SDL_MUSTLOCK(surface))
-        {
-            SDL_LockSurface(surface);
-        }
-
-        uint8_t *pixels = (uint8_t *)surface->pixels;
-
-        // video buffer is rotated -90º
-        for (int i = 0; i < SCREEN_WIDTH; i++)
-        {
-            for (int j = 0; j < SCREEN_HEIGHT; j++)
-            {
-                int idx = i * SCREEN_HEIGHT + j;
-                int p = idx % 8;
-
-                uint8_t bit = (video_memory[idx / 8] >> (7 - p)) & 0x01;
-
-                uint8_t *target_pixel = pixels + j * surface->pitch + i * surface->format->BytesPerPixel;
-
-                *target_pixel = bit;
-            }
-        }
-
-        if (SDL_MUSTLOCK(surface))
-        {
-            SDL_UnlockSurface(surface);
-        }
-
-        SDL_RenderClear(renderer);
-        SDL_Texture *screen_texture = SDL_CreateTextureFromSurface(renderer, surface);
-        SDL_RenderCopy(renderer, screen_texture, NULL, NULL);
-        SDL_RenderPresent(renderer);
-        SDL_DestroyTexture(screen_texture);
     }
 
-    return render;
+    if (SDL_MUSTLOCK(surface))
+    {
+        SDL_UnlockSurface(surface);
+    }
+
+    SDL_RenderClear(renderer);
+    SDL_Texture *screen_texture = SDL_CreateTextureFromSurface(renderer, surface);
+    SDL_RenderCopy(renderer, screen_texture, NULL, NULL);
+    SDL_RenderPresent(renderer);
+    SDL_DestroyTexture(screen_texture);
 }
 
 bool SpaceInvadersViewSDL::should_quit() const
