@@ -29,6 +29,8 @@ private:
 
     std::unique_ptr<SpaceInvadersView> view;
 
+    void handle_IN_3(State8080 &state);
+
     void handle_OUT_2(State8080 &state);
 
     void handle_OUT_4(State8080 &state);

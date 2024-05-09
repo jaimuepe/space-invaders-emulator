@@ -27,6 +27,13 @@ void SpaceInvaders::init()
             handle_OUT_4(state);
         });
 
+    emulator.connect_in_port(
+        3,
+        [&](State8080 &state)
+        {
+            handle_IN_3(state);
+        });
+
     view = std::make_unique<SpaceInvadersViewSDL>();
     view->init();
 }
@@ -84,6 +91,12 @@ void SpaceInvaders::run()
 }
 
 SpaceInvaders::~SpaceInvaders() {}
+
+void SpaceInvaders::handle_IN_3(State8080 &state)
+{
+    uint16_t v = (shift_y << 8) | shift_x;
+    state.a = ((v >> (8 - shift_offset)) & 0xff);
+}
 
 void SpaceInvaders::handle_OUT_2(State8080 &state)
 {
