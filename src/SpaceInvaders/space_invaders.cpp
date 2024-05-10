@@ -43,6 +43,11 @@ void SpaceInvaders::run()
     auto last_cpu_time = std::chrono::high_resolution_clock::now();
 
     uint64_t render_time_accumulator{0};
+    uint64_t interrupt_time_accumulator{0};
+
+    uint8_t video_interruption_code_idx{0};
+
+    uint8_t video_interruption_codes[2]{0xCF, 0xD7};
 
     for (;;)
     {
@@ -55,31 +60,40 @@ void SpaceInvaders::run()
             break;
         }
 
-        auto render_time_delta = std::chrono::duration_cast<std::chrono::nanoseconds>(time - last_cpu_time);
-        render_time_accumulator += render_time_delta.count();
+        auto delta_time = std::chrono::duration_cast<std::chrono::nanoseconds>(time - last_cpu_time).count();
+
+        constexpr long interrupt_time_ns = 8333333;
+
+        interrupt_time_accumulator += delta_time;
+
+        if (interrupt_time_accumulator > interrupt_time_ns)
+        {
+            interrupt_time_accumulator = 0;
+
+            if (emulator.interruptions_enabled())
+            {
+                // RST 1 or 2
+                emulator.interrupt(video_interruption_codes[video_interruption_code_idx]);
+                video_interruption_code_idx = (video_interruption_code_idx + 1) % 2;
+            }
+        }
+
+        render_time_accumulator += delta_time;
 
         constexpr long frame_time_ns = 16666666; // 60 fps
 
         if (render_time_accumulator > frame_time_ns)
         {
-            while (render_time_accumulator > frame_time_ns)
-            {
-                render_time_accumulator -= frame_time_ns;
-            }
+            render_time_accumulator = 0;
 
             view->render(emulator.video_memory());
-
-            if (emulator.interruptions_enabled())
-            {
-                emulator.interrupt(0xD7); // RST 2
-            }
         }
 
         auto elapsed_time_us = std::chrono::duration_cast<std::chrono::microseconds>(time - last_cpu_time).count();
 
         // how many cycles can we fit in the elapsed time?
         // the cpu runs at 2MHz, 2M cycles per second -> 2 cycles per us
-        int cycles = elapsed_time_us * 2;
+        long long cycles = elapsed_time_us * 2;
 
         while (cycles > 0)
         {

@@ -62,7 +62,7 @@ void set_alu_flags(State8080 &state, uint16_t result)
 {
     state.flags.z = result == 0;
     state.flags.s = (result & 0x80) != 0;
-    state.flags.p = Utils::parity(result);
+    state.flags.p = Utils::parity(result & 0xFF);
     state.flags.c = (result & 0xFFFF0000) != 0;
 }
 
@@ -125,7 +125,7 @@ void INR_R(State8080 &state, uint8_t *pos, const char *name)
 #if ENABLE_LOGGING
     std::cout << "INR " << name << '\n';
 #endif
-    uint16_t r = (*pos) + 1;
+    uint16_t r = static_cast<uint16_t>(*pos) + 1;
 
     state.flags.z = (r & 0xFF) == 0;
     state.flags.s = (r & 0x80) != 0;
@@ -141,12 +141,13 @@ void DCR_R(State8080 &state, uint8_t *pos, const char *name)
 #if ENABLE_LOGGING
     std::cout << "DCR " << name << '\n';
 #endif
-    uint8_t &r = *pos;
-    r--;
+    uint16_t r = static_cast<uint16_t>(*pos) - 1;
 
-    state.flags.z = r == 0;
+    state.flags.z = (r & 0xFF) == 0;
     state.flags.s = (r & 0x80) != 0;
-    state.flags.p = Utils::parity(r);
+    state.flags.p = Utils::parity(r & 0xFF);
+
+    *pos = r & 0xFF;
 
     state.pc++;
 }
@@ -156,9 +157,7 @@ void MVI_R(State8080 &state, uint8_t *pos, const char *name)
 #if ENABLE_LOGGING
     std::cout << "MVI " << name << ", " << PC1_str(state) << '\n';
 #endif
-    uint8_t val = state.memory[state.pc + 1];
-
-    *pos = val;
+    *pos = state.memory[state.pc + 1];
 
     state.pc += 2;
 }
@@ -177,7 +176,7 @@ void RLC(State8080 &state)
     state.pc++;
 }
 
-void DAD(State8080 &state, uint16_t add, const char *name)
+void DAD(State8080 &state, uint16_t value, const char *name)
 {
 #if ENABLE_LOGGING
     std::cout << "DAD " << name << '\n';
@@ -187,7 +186,7 @@ void DAD(State8080 &state, uint16_t add, const char *name)
         state.l,
         state.h);
 
-    hl += add;
+    hl += value;
 
     state.h = (hl & 0XFF00) >> 8;
     state.l = hl & 0xFF;
@@ -203,6 +202,16 @@ void LDAX(State8080 &state, uint16_t pos, const char *name)
     std::cout << "LDAX (" << name << ")" << '\n';
 #endif
     state.a = state.memory[pos];
+    state.pc++;
+}
+
+void DCX(State8080 &state, uint16_t *pos, const char *name)
+{
+#if ENABLE_LOGGING
+    std::cout << "DCX " << name << '\n';
+#endif
+
+    (*pos)--;
     state.pc++;
 }
 
@@ -242,13 +251,8 @@ void SHLD(State8080 &state)
     std::cout << "SHLD " << PC2_str(state) << '\n';
 #endif
 
-    uint8_t l = state.l;
-    state.l = state.memory[state.pc + 1];
-    state.memory[state.pc + 1] = l;
-
-    uint8_t h = state.h;
-    state.h = state.memory[state.pc + 2];
-    state.memory[state.pc + 2] = h;
+    state.memory[state.pc + 1] = state.l;
+    state.memory[state.pc + 2] = state.h;
 
     state.pc += 3;
 }
@@ -329,16 +333,6 @@ void STC(State8080 &state)
 #endif
 
     state.flags.c = true;
-    state.pc++;
-}
-
-void DCX(State8080 &state, uint16_t *pos, const char *name)
-{
-#if ENABLE_LOGGING
-    std::cout << "DCX " << name << '\n';
-#endif
-
-    (*pos)--;
     state.pc++;
 }
 
@@ -499,6 +493,7 @@ void ORI(State8080 &state)
     uint8_t value = state.memory[state.pc + 1];
 
     uint8_t a = state.a | value;
+    state.a = a;
 
     state.flags.z = a == 0;
     state.flags.s = (a & 0x80) != 0;
@@ -515,6 +510,7 @@ void ORA_R(State8080 &state, uint8_t value, const char *name)
 #endif
 
     uint8_t a = state.a | value;
+    state.a = a;
 
     state.flags.z = a == 0;
     state.flags.s = (a & 0x80) != 0;
@@ -533,6 +529,7 @@ void ORA_M(State8080 &state)
     uint8_t value = state.memory[Utils::to_16(state.l, state.h)];
 
     uint8_t a = state.a | value;
+    state.a = a;
 
     state.flags.z = a == 0;
     state.flags.s = (a & 0x80) != 0;
@@ -554,15 +551,28 @@ void CMP_R(State8080 &state, uint8_t value, const char *name)
     state.pc++;
 }
 
+void CMP_M(State8080 &state)
+{
+#if ENABLE_LOGGING
+    std::cout << "CMP (HL)" << '\n';
+#endif
+
+    uint8_t value = state.memory[Utils::to_16(state.l, state.h)];
+
+    uint16_t res = static_cast<uint16_t>(state.a) - value;
+    set_alu_flags(state, res);
+
+    state.pc++;
+}
+
 void CPI(State8080 &state)
 {
 #if ENABLE_LOGGING
-    std::cout << "CPI A, " << PC1_str(state) << '\n';
+    std::cout << "CPI " << PC1_str(state) << '\n';
 #endif
     uint8_t data = state.memory[state.pc + 1];
 
     uint16_t res = static_cast<uint16_t>(state.a) - data;
-
     set_alu_flags(state, res);
 
     state.pc += 2;
@@ -575,7 +585,6 @@ void XRA_R(State8080 &state, uint8_t value, const char *name)
 #endif
 
     uint8_t a = state.a ^ value;
-
     state.a = a;
 
     state.flags.z = a == 0;
@@ -625,7 +634,7 @@ void ANA_M(State8080 &state)
 
     uint16_t hl = Utils::to_16(state.l, state.h);
 
-    uint16_t a = state.a & state.memory[hl];
+    uint8_t a = state.a & state.memory[hl];
     state.a = a;
 
     state.flags.z = a == 0;
@@ -634,6 +643,19 @@ void ANA_M(State8080 &state)
     state.flags.c = false;
 
     state.pc++;
+}
+
+void SBI(State8080 &state)
+{
+#if ENABLE_LOGGING
+    std::cout << "SBI " << PC1_str(state) << '\n';
+#endif
+
+    uint16_t a = static_cast<uint16_t>(state.a) - state.memory[state.pc + 1] - state.flags.c;
+    set_alu_flags(state, a);
+
+    state.a = a & 0xFF;
+    state.pc += 2;
 }
 
 void SUI(State8080 &state)
@@ -656,7 +678,7 @@ void ANI(State8080 &state)
 #endif
 
     // no need to cast, we are never going to have carry here
-    uint16_t a = state.a & state.memory[state.pc + 1];
+    uint16_t a = static_cast<uint16_t>(state.a) & state.memory[state.pc + 1];
     set_alu_flags(state, a);
 
     state.a = a & 0xFF;
@@ -770,8 +792,7 @@ void PUSH_PSW(State8080 &state)
 #endif
 
     uint8_t flags =
-        (state.flags.c) |
-        0x02 | // second bit is always one
+        (state.flags.c) << 0 |
         state.flags.p << 2 |
         state.flags.z << 6 |
         state.flags.s << 7;
@@ -843,6 +864,22 @@ void JNZ(State8080 &state)
     }
 }
 
+void JNC(State8080 &state)
+{
+#if ENABLE_LOGGING
+    std::cout << "JNC " << PC2_str(state) << '\n';
+#endif
+
+    if (!state.flags.c)
+    {
+        JMP(state);
+    }
+    else
+    {
+        state.pc += 3;
+    }
+}
+
 void CNC(State8080 &state)
 {
 #if ENABLE_LOGGING
@@ -885,7 +922,7 @@ void JP(State8080 &state)
     std::cout << "JP " << PC2_str(state) << '\n';
 #endif
 
-    if (state.flags.s == 0)
+    if (!state.flags.s)
     {
         JMP(state);
     }
@@ -1125,6 +1162,9 @@ int Emulator8080::step()
     case 0x0B: // DCX BC
         DCX(state, reinterpret_cast<uint16_t *>(&state.c), "BC");
         break;
+    case 0x0C: // INR C
+        INR_R(state, &state.c, "C");
+        break;
     case 0x0D: // DCR C
         DCR_R(state, &state.c, "C");
         break;
@@ -1142,6 +1182,12 @@ int Emulator8080::step()
         break;
     case 0x13: // INX DE
         INX(state, reinterpret_cast<uint16_t *>(&state.e), "DE");
+        break;
+    case 0x14: // INR D
+        INR_R(state, &state.d, "D");
+        break;
+    case 0x15: // DCR D
+        DCR_R(state, &state.d, "D");
         break;
     case 0x16: // MVI D
         MVI_R(state, &state.d, "D");
@@ -1198,16 +1244,16 @@ int Emulator8080::step()
     case 0x2E: // MVI L
         MVI_R(state, &state.l, "L");
         break;
-    case 0x2F:
+    case 0x2F: //  CMA
         CMA(state);
         break;
-    case 0x31: // LXI P
+    case 0x31: // LXI SP
         LXI(state, &state.sp, "SP");
         break;
     case 0x32: // STA
         STA(state);
         break;
-    case 0x35: // DCR M
+    case 0x35: // DCR (HL)
         DCR_M(state);
         break;
     case 0x36: // MVI (HL)
@@ -1230,6 +1276,9 @@ int Emulator8080::step()
         break;
     case 0x3E: // MVI A
         MVI_R(state, &state.a, "A");
+        break;
+    case 0x40: // MOV B, B
+        MOV_R_R(state, &state.b, state.b, "B", "B");
         break;
     case 0x41: // MOV B, C
         MOV_R_R(state, &state.b, state.c, "B", "C");
@@ -1276,8 +1325,23 @@ int Emulator8080::step()
     case 0x4F: // MOV C, A
         MOV_R_R(state, &state.c, state.a, "C", "A");
         break;
+    case 0x50: // MOV D, B
+        MOV_R_R(state, &state.d, state.b, "D", "B");
+        break;
+    case 0x51: // MOV D, C
+        MOV_R_R(state, &state.d, state.c, "D", "C");
+        break;
+    case 0x52: // MOV D, D
+        MOV_R_R(state, &state.d, state.d, "D", "D");
+        break;
+    case 0x53: // MOV D,  E
+        MOV_R_R(state, &state.d, state.e, "D", "E");
+        break;
     case 0x54: // MOV D, H
         MOV_R_R(state, &state.d, state.h, "D", "H");
+        break;
+    case 0x55: // MOV D, L
+        MOV_R_R(state, &state.d, state.l, "D", "L");
         break;
     case 0x56: // MOV D, (HL)
         MOV_R_M(state, &state.d, "D");
@@ -1399,6 +1463,12 @@ int Emulator8080::step()
     case 0x7E: // MOV A, (HL)
         MOV_R_M(state, &state.a, "A");
         break;
+    case 0x7F: // MOV A, A
+        MOV_R_R(state, &state.a, state.a, "A", "A");
+        break;
+    case 0x80: // ADD B
+        ADD_R(state, state.b, "B");
+        break;
     case 0x81: // ADD C
         ADD_R(state, state.c, "C");
         break;
@@ -1480,7 +1550,7 @@ int Emulator8080::step()
     case 0xA5: // ANA L
         ANA_R(state, state.l, "L");
         break;
-    case 0xA6: // ANA L
+    case 0xA6: // ANA (HL)
         ANA_M(state);
         break;
     case 0xA7: // ANA A
@@ -1510,14 +1580,47 @@ int Emulator8080::step()
     case 0xB0: // ORA B
         ORA_R(state, state.b, "B");
         break;
+    case 0xB1: // ORA C
+        ORA_R(state, state.c, "C");
+        break;
+    case 0xB2: // ORA D
+        ORA_R(state, state.d, "D");
+        break;
+    case 0xB3: // ORA E
+        ORA_R(state, state.e, "E");
+        break;
+    case 0xB4: // ORA H
+        ORA_R(state, state.h, "H");
+        break;
+    case 0xB5: // ORA L
+        ORA_R(state, state.l, "L");
+        break;
     case 0xB6: // ORA M
         ORA_M(state);
+        break;
+    case 0xB7: // ORA A
+        ORA_R(state, state.a, "A");
+        break;
+    case 0xB8: // CMP B
+        CMP_R(state, state.b, "B");
         break;
     case 0xB9: // CMP C
         CMP_R(state, state.c, "C");
         break;
+    case 0xBA: // CMP D
+        CMP_R(state, state.d, "C");
+        break;
     case 0xBB: // CMP E
         CMP_R(state, state.e, "E");
+        break;
+    case 0xBC: // CMP H
+        CMP_R(state, state.h, "H");
+        break;
+    case 0xBD: // CMP L
+        CMP_R(state, state.l, "L");
+        break;
+    case 0xBE: // CMP (HL)
+        CMP_M(state);
         break;
     case 0xC0: // RNZ
         RNZ(state);
@@ -1567,6 +1670,9 @@ int Emulator8080::step()
     case 0xD1: // POP DE
         POP(state, reinterpret_cast<uint16_t *>(&state.e), "DE");
         break;
+    case 0xD2: // JNC
+        JNC(state);
+        break;
     case 0xD3: // OUT
         OUT(state, out_mappings[state.memory[state.pc + 1]]);
         break;
@@ -1593,6 +1699,9 @@ int Emulator8080::step()
         break;
     case 0xDD: // ???
         NOP(state);
+        break;
+    case 0xDE: // SBI
+        SBI(state);
         break;
     case 0xE1: // POP HL
         POP(state, reinterpret_cast<uint16_t *>(&state.l), "HL");
@@ -1633,6 +1742,9 @@ int Emulator8080::step()
         break;
     case 0xF6:
         ORI(state);
+        break;
+    case 0xF7:
+        RST(state, 6, is_interruption);
         break;
     case 0xF8: // RM
         RM(state);
