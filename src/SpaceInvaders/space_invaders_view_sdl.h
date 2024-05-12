@@ -16,7 +16,7 @@ public:
 
     virtual void init() override;
 
-    virtual void poll_events() override;
+    virtual void poll_events(uint8_t inputs[]) override;
 
     virtual void render(const uint8_t *video_memory) override;
 

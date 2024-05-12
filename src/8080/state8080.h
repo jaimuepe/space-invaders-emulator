@@ -37,7 +37,7 @@ public:
         bool s;
         bool z;
         bool p;
-        bool c;
+        bool cy;
     } flags;
 
     void init();

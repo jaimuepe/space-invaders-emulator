@@ -43,7 +43,11 @@ add_executable(SpaceInvaders
     src/8080/state8080.h
     src/8080/state8080.cpp
     src/8080/mem8080.h
-    src/8080/mem8080.cpp)
+    src/8080/mem8080.cpp
+    src/8080/CPUDiag/cpu_diag.h
+    src/8080/CPUDiag/cpu_diag.cpp)
+
+# add_compile_definitions(CPU_DIAG)
 
 target_link_libraries(SpaceInvaders PRIVATE ${SDL2_LIBRARIES})
 

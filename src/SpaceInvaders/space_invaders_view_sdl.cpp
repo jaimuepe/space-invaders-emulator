@@ -4,14 +4,14 @@
 
 #include <iostream>
 
-constexpr int SCREEN_WIDTH = 224;
-constexpr int SCREEN_HEIGHT = 256;
+constexpr int SCREEN_WIDTH = 256;
+constexpr int SCREEN_HEIGHT = 224;
 
 SpaceInvadersViewSDL::SpaceInvadersViewSDL() {}
 
 void SpaceInvadersViewSDL::init()
 {
-    if (SDL_Init(SDL_INIT_VIDEO) < 0)
+    if (SDL_Init(SDL_INIT_EVERYTHING) < 0)
     {
         std::cerr << "could not initialize sdl2: " << SDL_GetError() << '\n';
         exit(1);
@@ -39,11 +39,11 @@ void SpaceInvadersViewSDL::init()
         exit(1);
     }
 
-    SDL_SetWindowMinimumSize(window, SCREEN_WIDTH, SCREEN_HEIGHT);
+    // SDL_SetWindowMinimumSize(window, SCREEN_WIDTH, SCREEN_HEIGHT);
 
-    SDL_RenderSetLogicalSize(renderer, SCREEN_WIDTH, SCREEN_HEIGHT);
+    // SDL_RenderSetLogicalSize(renderer, SCREEN_WIDTH, SCREEN_HEIGHT);
 
-    SDL_RenderSetIntegerScale(renderer, SDL_TRUE);
+    // SDL_RenderSetIntegerScale(renderer, SDL_TRUE);
 
     SDL_SetRenderDrawColor(renderer, 128, 128, 128, 0);
 
@@ -63,13 +63,25 @@ void SpaceInvadersViewSDL::init()
     SDL_SetPaletteColors(surface->format->palette, colors, 0, 2);
 }
 
-void SpaceInvadersViewSDL::poll_events()
+void SpaceInvadersViewSDL::poll_events(uint8_t inputs[])
 {
     SDL_Event eventData;
     while (SDL_PollEvent(&eventData))
     {
         switch (eventData.type)
         {
+        case SDL_KEYDOWN:
+            if (eventData.key.keysym.sym == SDL_KeyCode::SDLK_c)
+            {
+                inputs[1] | 0x01;
+            }
+            break;
+        case SDL_KEYUP:
+            if (eventData.key.keysym.sym == SDL_KeyCode::SDLK_c)
+            {
+                inputs[1] & ~0x01;
+            }
+            break;
         case SDL_QUIT:
             exit_requested = true;
             break;
@@ -86,20 +98,17 @@ void SpaceInvadersViewSDL::render(const uint8_t *video_memory)
 
     uint8_t *pixels = (uint8_t *)surface->pixels;
 
-    // video buffer is rotated -90º
-    for (int i = 0; i < SCREEN_WIDTH; i++)
+    for (int i = 0; i < SCREEN_WIDTH * SCREEN_HEIGHT; i++)
     {
-        for (int j = 0; j < SCREEN_HEIGHT; j++)
-        {
-            int idx = i * SCREEN_HEIGHT + j;
-            int p = idx % 8;
+        int row = i / SCREEN_WIDTH;
+        int col = i % SCREEN_WIDTH;
 
-            uint8_t bit = (video_memory[idx / 8] >> (7 - p)) & 0x01;
+        int p = i % 8;
+        uint8_t bit = (video_memory[i / 8] >> (7 - p)) & 0x01;
 
-            uint8_t *target_pixel = pixels + j * surface->pitch + i * surface->format->BytesPerPixel;
+        uint8_t *target_pixel = pixels + row * surface->pitch + col * surface->format->BytesPerPixel;
 
-            *target_pixel = bit;
-        }
+        *target_pixel = bit;
     }
 
     if (SDL_MUSTLOCK(surface))

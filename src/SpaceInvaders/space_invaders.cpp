@@ -11,6 +11,10 @@ SpaceInvaders::SpaceInvaders() {}
 
 void SpaceInvaders::init()
 {
+    // always one
+    input[0] = input[0] | 0b01 | 0b100 | 0b1000;
+    input[1] = input[1] | 0b1000;
+
     emulator.init();
 
     emulator.connect_out_port(
@@ -25,6 +29,13 @@ void SpaceInvaders::init()
         [&](State8080 &state)
         {
             handle_OUT_4(state);
+        });
+
+    emulator.connect_in_port(
+        1,
+        [&](State8080 &state)
+        {
+            handle_IN_1(state);
         });
 
     emulator.connect_in_port(
@@ -53,7 +64,7 @@ void SpaceInvaders::run()
     {
         auto time = std::chrono::high_resolution_clock::now();
 
-        view->poll_events();
+        view->poll_events(input);
 
         if (view->should_quit())
         {
@@ -106,10 +117,15 @@ void SpaceInvaders::run()
 
 SpaceInvaders::~SpaceInvaders() {}
 
+void SpaceInvaders::handle_IN_1(State8080 &state)
+{
+    // state.a = input[1];
+}
+
 void SpaceInvaders::handle_IN_3(State8080 &state)
 {
     uint16_t v = (shift_y << 8) | shift_x;
-    state.a = ((v >> (8 - shift_offset)) & 0xff);
+    state.a = ((v >> (8 - shift_offset)) & 0xFF);
 }
 
 void SpaceInvaders::handle_OUT_2(State8080 &state)

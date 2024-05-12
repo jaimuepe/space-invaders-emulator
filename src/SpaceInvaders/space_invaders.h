@@ -23,11 +23,13 @@ private:
 
     uint8_t shift_offset{0};
 
-    uint8_t inputs[2];
+    uint8_t input[3]{0};
 
     Emulator8080 emulator{};
 
     std::unique_ptr<SpaceInvadersView> view;
+
+    void handle_IN_1(State8080 &state);
 
     void handle_IN_3(State8080 &state);
 

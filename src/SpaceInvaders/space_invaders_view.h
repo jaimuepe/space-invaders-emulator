@@ -7,7 +7,7 @@ class SpaceInvadersView
 public:
     virtual void init() = 0;
 
-    virtual void poll_events() = 0;
+    virtual void poll_events(uint8_t inputs[]) = 0;
     
     virtual void render(const uint8_t *video_memory) = 0;
 
