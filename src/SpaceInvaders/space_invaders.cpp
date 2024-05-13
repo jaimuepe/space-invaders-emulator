@@ -119,7 +119,7 @@ SpaceInvaders::~SpaceInvaders() {}
 
 void SpaceInvaders::handle_IN_1(State8080 &state)
 {
-    // state.a = input[1];
+    state.a = input[1];
 }
 
 void SpaceInvaders::handle_IN_3(State8080 &state)

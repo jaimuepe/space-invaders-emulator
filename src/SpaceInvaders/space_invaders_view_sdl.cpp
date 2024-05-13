@@ -4,8 +4,8 @@
 
 #include <iostream>
 
-constexpr int SCREEN_WIDTH = 256;
-constexpr int SCREEN_HEIGHT = 224;
+constexpr int SCREEN_WIDTH = 224;
+constexpr int SCREEN_HEIGHT = 256;
 
 SpaceInvadersViewSDL::SpaceInvadersViewSDL() {}
 
@@ -73,14 +73,10 @@ void SpaceInvadersViewSDL::poll_events(uint8_t inputs[])
         case SDL_KEYDOWN:
             if (eventData.key.keysym.sym == SDL_KeyCode::SDLK_c)
             {
-                inputs[1] | 0x01;
+                inputs[1] |= 0x01;
             }
             break;
         case SDL_KEYUP:
-            if (eventData.key.keysym.sym == SDL_KeyCode::SDLK_c)
-            {
-                inputs[1] & ~0x01;
-            }
             break;
         case SDL_QUIT:
             exit_requested = true;
@@ -100,13 +96,20 @@ void SpaceInvadersViewSDL::render(const uint8_t *video_memory)
 
     for (int i = 0; i < SCREEN_WIDTH * SCREEN_HEIGHT; i++)
     {
-        int row = i / SCREEN_WIDTH;
-        int col = i % SCREEN_WIDTH;
 
         int p = i % 8;
         uint8_t bit = (video_memory[i / 8] >> (7 - p)) & 0x01;
 
-        uint8_t *target_pixel = pixels + row * surface->pitch + col * surface->format->BytesPerPixel;
+        int r = i / SCREEN_HEIGHT;
+        int c = i % SCREEN_HEIGHT;
+
+        int temp_c = c;
+        c = r;
+        r = -temp_c + SCREEN_HEIGHT - 1;
+
+        // rotate coordinates
+
+        uint8_t *target_pixel = pixels + r * surface->pitch + c * surface->format->BytesPerPixel;
 
         *target_pixel = bit;
     }

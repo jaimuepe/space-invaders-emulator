@@ -1572,6 +1572,9 @@ int Emulator8080::step()
     case 0x3A: // LDA adr
         LDA(state);
         break;
+    case 0x3B: // DCX SP
+        DCX(state, &state.pc, "PC");
+        break;
     case 0x3C: // INR A
         INR_R(state, &state.a, "A");
         break;
