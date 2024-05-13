@@ -47,7 +47,7 @@ add_executable(SpaceInvaders
     src/8080/CPUDiag/cpu_diag.h
     src/8080/CPUDiag/cpu_diag.cpp)
 
-# add_compile_definitions(CPU_DIAG)
+add_compile_definitions(CPU_DIAG)
 
 target_link_libraries(SpaceInvaders PRIVATE ${SDL2_LIBRARIES})
 

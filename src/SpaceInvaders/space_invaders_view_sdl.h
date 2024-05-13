@@ -7,7 +7,10 @@
 
 struct SDL_Window;
 struct SDL_Renderer;
-struct SDL_Surface;
+struct SDL_Texture;
+
+constexpr int SCREEN_WIDTH = 224;
+constexpr int SCREEN_HEIGHT = 256;
 
 class SpaceInvadersViewSDL : public SpaceInvadersView
 {
@@ -18,7 +21,9 @@ public:
 
     virtual void poll_events(uint8_t inputs[]) override;
 
-    virtual void render(const uint8_t *video_memory) override;
+    virtual void update_screen_buffer(const uint8_t *video_memory) override;
+
+    virtual void render() override;
 
     virtual bool should_quit() const override;
 
@@ -27,9 +32,11 @@ public:
 private:
     bool exit_requested{};
 
+    uint8_t screen_buffer[SCREEN_HEIGHT][SCREEN_WIDTH][4]{0};
+
     SDL_Window *window{};
 
     SDL_Renderer *renderer{};
 
-    SDL_Surface *surface{};
+    SDL_Texture *texture{};
 };

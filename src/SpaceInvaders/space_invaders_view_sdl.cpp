@@ -4,14 +4,11 @@
 
 #include <iostream>
 
-constexpr int SCREEN_WIDTH = 224;
-constexpr int SCREEN_HEIGHT = 256;
-
 SpaceInvadersViewSDL::SpaceInvadersViewSDL() {}
 
 void SpaceInvadersViewSDL::init()
 {
-    if (SDL_Init(SDL_INIT_EVERYTHING) < 0)
+    if (SDL_Init(SDL_INIT_VIDEO) < 0)
     {
         std::cerr << "could not initialize sdl2: " << SDL_GetError() << '\n';
         exit(1);
@@ -31,7 +28,9 @@ void SpaceInvadersViewSDL::init()
         exit(1);
     }
 
-    renderer = SDL_CreateRenderer(window, -1, 0);
+    SDL_SetWindowMinimumSize(window, SCREEN_WIDTH, SCREEN_HEIGHT);
+
+    renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
 
     if (renderer == nullptr)
     {
@@ -39,28 +38,24 @@ void SpaceInvadersViewSDL::init()
         exit(1);
     }
 
-    // SDL_SetWindowMinimumSize(window, SCREEN_WIDTH, SCREEN_HEIGHT);
+    SDL_RenderSetLogicalSize(renderer, SCREEN_WIDTH, SCREEN_HEIGHT);
 
-    // SDL_RenderSetLogicalSize(renderer, SCREEN_WIDTH, SCREEN_HEIGHT);
-
-    // SDL_RenderSetIntegerScale(renderer, SDL_TRUE);
+    SDL_RenderSetIntegerScale(renderer, SDL_TRUE);
 
     SDL_SetRenderDrawColor(renderer, 128, 128, 128, 0);
 
-    surface = SDL_CreateRGBSurfaceWithFormat(0,
-                                             SCREEN_WIDTH,
-                                             SCREEN_HEIGHT,
-                                             1,
-                                             SDL_PIXELFORMAT_INDEX8);
+    texture = SDL_CreateTexture(
+        renderer,
+        SDL_PIXELFORMAT_RGBA32,
+        SDL_TEXTUREACCESS_STREAMING,
+        SCREEN_WIDTH,
+        SCREEN_HEIGHT);
 
-    if (surface == nullptr)
+    if (texture == nullptr)
     {
-        std::cerr << "could not create surface: " << SDL_GetError() << '\n';
+        std::cerr << "could not create texture: " << SDL_GetError() << '\n';
         exit(1);
     }
-
-    SDL_Color colors[2] = {{0, 0, 0, 255}, {255, 255, 255, 255}};
-    SDL_SetPaletteColors(surface->format->palette, colors, 0, 2);
 }
 
 void SpaceInvadersViewSDL::poll_events(uint8_t inputs[])
@@ -85,45 +80,62 @@ void SpaceInvadersViewSDL::poll_events(uint8_t inputs[])
     }
 }
 
-void SpaceInvadersViewSDL::render(const uint8_t *video_memory)
+void SpaceInvadersViewSDL::update_screen_buffer(const uint8_t *video_memory)
 {
-    if (SDL_MUSTLOCK(surface))
+    for (int i = 0; i < SCREEN_HEIGHT * SCREEN_WIDTH / 8; i++)
     {
-        SDL_LockSurface(surface);
+        const int y = i * 8 / 256;
+        const int base_x = (i * 8) % 256;
+
+        const uint8_t cur_byte = video_memory[i];
+
+        for (uint8_t bit = 0; bit < 8; bit++)
+        {
+            int px = base_x + bit;
+            int py = y;
+
+            const bool is_pixel_lit = (cur_byte >> bit) & 1;
+
+            uint8_t r = 0, g = 0, b = 0;
+
+            if (is_pixel_lit)
+            {
+                r = 255;
+                g = 255;
+                b = 255;
+            }
+
+            // space invaders' screen is rotated 90 degrees anti-clockwise
+            // so we invert the coordinates:
+            const int temp_x = px;
+            px = py;
+            py = -temp_x + SCREEN_HEIGHT - 1;
+
+            screen_buffer[py][px][0] = r;
+            screen_buffer[py][px][1] = g;
+            screen_buffer[py][px][2] = b;
+        }
     }
 
-    uint8_t *pixels = (uint8_t *)surface->pixels;
+    void *texture_pixels;
+    int pitch;
 
-    for (int i = 0; i < SCREEN_WIDTH * SCREEN_HEIGHT; i++)
+    if (SDL_LockTexture(texture, NULL, &texture_pixels, &pitch) != 0)
     {
-
-        int p = i % 8;
-        uint8_t bit = (video_memory[i / 8] >> (7 - p)) & 0x01;
-
-        int r = i / SCREEN_HEIGHT;
-        int c = i % SCREEN_HEIGHT;
-
-        int temp_c = c;
-        c = r;
-        r = -temp_c + SCREEN_HEIGHT - 1;
-
-        // rotate coordinates
-
-        uint8_t *target_pixel = pixels + r * surface->pitch + c * surface->format->BytesPerPixel;
-
-        *target_pixel = bit;
+        std::cerr << "unable to lock texture: " << SDL_GetError() << '\n';
     }
-
-    if (SDL_MUSTLOCK(surface))
+    else
     {
-        SDL_UnlockSurface(surface);
+        memcpy(texture_pixels, screen_buffer, pitch * SCREEN_HEIGHT);
+        SDL_UnlockTexture(texture);
     }
+}
 
+void SpaceInvadersViewSDL::render()
+{
     SDL_RenderClear(renderer);
-    SDL_Texture *screen_texture = SDL_CreateTextureFromSurface(renderer, surface);
-    SDL_RenderCopy(renderer, screen_texture, NULL, NULL);
+    SDL_RenderCopy(renderer, texture, NULL, NULL);
     SDL_RenderPresent(renderer);
-    SDL_DestroyTexture(screen_texture);
 }
 
 bool SpaceInvadersViewSDL::should_quit() const
@@ -134,6 +146,7 @@ bool SpaceInvadersViewSDL::should_quit() const
 SpaceInvadersViewSDL::~SpaceInvadersViewSDL()
 {
     SDL_DestroyRenderer(renderer);
+    SDL_DestroyTexture(texture);
     SDL_DestroyWindow(window);
     SDL_Quit();
 }

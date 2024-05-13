@@ -49,21 +49,47 @@ void SpaceInvaders::init()
     view->init();
 }
 
+void SpaceInvaders::update(uint64_t delta_time_ns)
+{
+    // how many cycles can we fit in the elapsed time?
+    // the cpu runs at 2MHz, 2M cycles per second -> 2 cycles per us
+    long long cycles = delta_time_ns / 1000 * 2;
+
+    while (cycles > 0)
+    {
+        cycles -= emulator.step();
+    }
+
+    constexpr long interrupt_time_ns = 8333333;
+
+    interrupt_time_accumulator += delta_time_ns;
+
+    if (interrupt_time_accumulator > interrupt_time_ns)
+    {
+        interrupt_time_accumulator = 0;
+
+        if (emulator.interruptions_enabled())
+        {
+            // RST 1 or 2
+            uint8_t interrupt = last_interrrupt == 0xD7 ? 0xCF : 0xD7;
+            emulator.interrupt(interrupt);
+
+            if (interrupt == 0xD7)
+            {
+                view->update_screen_buffer(emulator.video_memory());
+            }
+
+            last_interrrupt = interrupt;
+        }
+    }
+}
+
 void SpaceInvaders::run()
 {
-    auto last_cpu_time = std::chrono::high_resolution_clock::now();
+    auto last_time = std::chrono::high_resolution_clock::now();
 
-    uint64_t render_time_accumulator{0};
-    uint64_t interrupt_time_accumulator{0};
-
-    uint8_t video_interruption_code_idx{0};
-
-    uint8_t video_interruption_codes[2]{0xCF, 0xD7};
-
-    for (;;)
+    while (true)
     {
-        auto time = std::chrono::high_resolution_clock::now();
-
         view->poll_events(input);
 
         if (view->should_quit())
@@ -71,47 +97,13 @@ void SpaceInvaders::run()
             break;
         }
 
-        auto delta_time = std::chrono::duration_cast<std::chrono::nanoseconds>(time - last_cpu_time).count();
+        auto current = std::chrono::high_resolution_clock::now();
+        auto delta_time = std::chrono::duration_cast<std::chrono::nanoseconds>(current - last_time).count();
+        update(delta_time);
 
-        constexpr long interrupt_time_ns = 8333333;
+        view->render();
 
-        interrupt_time_accumulator += delta_time;
-
-        if (interrupt_time_accumulator > interrupt_time_ns)
-        {
-            interrupt_time_accumulator = 0;
-
-            if (emulator.interruptions_enabled())
-            {
-                // RST 1 or 2
-                emulator.interrupt(video_interruption_codes[video_interruption_code_idx]);
-                video_interruption_code_idx = (video_interruption_code_idx + 1) % 2;
-            }
-        }
-
-        render_time_accumulator += delta_time;
-
-        constexpr long frame_time_ns = 16666666; // 60 fps
-
-        if (render_time_accumulator > frame_time_ns)
-        {
-            render_time_accumulator = 0;
-
-            view->render(emulator.video_memory());
-        }
-
-        auto elapsed_time_us = std::chrono::duration_cast<std::chrono::microseconds>(time - last_cpu_time).count();
-
-        // how many cycles can we fit in the elapsed time?
-        // the cpu runs at 2MHz, 2M cycles per second -> 2 cycles per us
-        long long cycles = elapsed_time_us * 2;
-
-        while (cycles > 0)
-        {
-            cycles -= emulator.step();
-        }
-
-        last_cpu_time = time;
+        last_time = current;
     }
 }
 
@@ -119,7 +111,7 @@ SpaceInvaders::~SpaceInvaders() {}
 
 void SpaceInvaders::handle_IN_1(State8080 &state)
 {
-    state.a = input[1];
+    // state.a = input[1];
 }
 
 void SpaceInvaders::handle_IN_3(State8080 &state)

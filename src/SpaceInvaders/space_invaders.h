@@ -4,6 +4,10 @@
 
 #include <memory>
 
+constexpr int FPS = 60;
+constexpr int CLOCK_SPEED = 2000000;
+constexpr int CYCLES_PER_FRAME = CLOCK_SPEED / FPS;
+
 class SpaceInvadersView;
 
 class SpaceInvaders
@@ -18,6 +22,10 @@ public:
     ~SpaceInvaders();
 
 private:
+    uint8_t last_interrrupt{0xD7};
+
+    uint64_t interrupt_time_accumulator{0};
+
     uint16_t shift_x{0};
     uint16_t shift_y{0};
 
@@ -26,6 +34,8 @@ private:
     uint8_t input[3]{0};
 
     Emulator8080 emulator{};
+
+    void update(uint64_t delta_time_ms);
 
     std::unique_ptr<SpaceInvadersView> view;
 
